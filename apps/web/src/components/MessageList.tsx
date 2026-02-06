@@ -2,7 +2,7 @@
 
 import type { Message } from "@repo/shared";
 import { useEffect, useRef } from "react";
-import { MessageBubble } from "./MessageBubble";
+import { ChatMessage } from "./ChatMessage";
 
 interface MessageListProps {
   messages: Message[];
@@ -29,7 +29,7 @@ export function MessageList({ messages, isStreaming }: MessageListProps) {
       {messages.length > 0 && (
         <div className="max-w-4xl mx-auto px-6 py-6 space-y-1">
           {messages.map((msg) => (
-            <MessageBubble key={msg.id} message={msg} />
+            <ChatMessage key={msg.id} message={msg} />
           ))}
 
           {isStreaming && (
