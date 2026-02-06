@@ -2,6 +2,7 @@ import { createSessionSchema, DEFAULT_MODEL, sessions, updateSessionSchema } fro
 import { desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { nanoid } from "nanoid";
+import { generateSessionTitle } from "../agent/title.js";
 import { db } from "../db/client.js";
 
 export const sessionsRouter = new Hono();
@@ -75,6 +76,31 @@ sessionsRouter.patch("/:id", async (c) => {
   const [updated] = await db.select().from(sessions).where(eq(sessions.id, id));
 
   return c.json(updated);
+});
+
+// POST /api/sessions/:id/generate-title - Generate title from first message
+sessionsRouter.post("/:id/generate-title", async (c) => {
+  const id = c.req.param("id");
+  const body = await c.req.json();
+  const message = body.message as string;
+
+  if (!message || typeof message !== "string") {
+    return c.json({ error: "message is required" }, 400);
+  }
+
+  const [session] = await db.select().from(sessions).where(eq(sessions.id, id));
+  if (!session) {
+    return c.json({ error: "Session not found" }, 404);
+  }
+
+  if (session.title !== "New Session") {
+    return c.json({ accepted: false, reason: "Title already set" });
+  }
+
+  // Fire-and-forget
+  generateSessionTitle(id, message);
+
+  return c.json({ accepted: true });
 });
 
 // DELETE /api/sessions/:id - Delete session

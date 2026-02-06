@@ -50,6 +50,13 @@ export class AgentAPIClient {
     await this.fetch(`/api/sessions/${id}`, { method: "DELETE" });
   }
 
+  async generateTitle(sessionId: string, message: string): Promise<void> {
+    await this.fetch(`/api/sessions/${sessionId}/generate-title`, {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    });
+  }
+
   async getMessages(sessionId: string): Promise<Message[]> {
     return this.fetch<Message[]>(`/api/messages/${sessionId}`);
   }
