@@ -63,21 +63,18 @@ describe("sendMessageSchema", () => {
 });
 
 describe("envSchema", () => {
-  test("requires ANTHROPIC_API_KEY", () => {
-    expect(envSchema.safeParse({}).success).toBe(false);
+  test("accepts empty env (both API keys optional)", () => {
+    expect(envSchema.safeParse({}).success).toBe(true);
   });
 
   test("applies defaults for DATABASE_PATH and PORT", () => {
-    const result = envSchema.parse({ ANTHROPIC_API_KEY: "sk-test-key" });
+    const result = envSchema.parse({});
     expect(result.DATABASE_PATH).toBe("./data/agent.db");
     expect(result.PORT).toBe(5001);
   });
 
   test("coerces PORT from string to number", () => {
-    const result = envSchema.parse({
-      ANTHROPIC_API_KEY: "sk-test",
-      PORT: "8080",
-    });
+    const result = envSchema.parse({ PORT: "8080" });
     expect(result.PORT).toBe(8080);
   });
 });
