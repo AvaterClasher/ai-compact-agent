@@ -1,11 +1,24 @@
 "use client";
 
-import { AVAILABLE_MODELS, DEFAULT_MODEL } from "@repo/shared";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
 export function useModelSelector(sessionId: string | null) {
-  const [model, setModelState] = useState<string>(DEFAULT_MODEL);
+  const [model, setModelState] = useState<string>("");
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+
+  // Fetch available models from API on mount
+  useEffect(() => {
+    api
+      .getModels()
+      .then(({ models, default: defaultModel }) => {
+        setAvailableModels(models);
+        setModelState((prev) => prev || defaultModel);
+      })
+      .catch(() => {
+        // Fallback if API is unreachable
+      });
+  }, []);
 
   const setModel = useCallback(
     async (newModel: string) => {
@@ -21,5 +34,5 @@ export function useModelSelector(sessionId: string | null) {
     [sessionId],
   );
 
-  return { model, setModel, availableModels: AVAILABLE_MODELS };
+  return { model, setModel, availableModels };
 }
