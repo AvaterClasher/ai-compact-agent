@@ -1,9 +1,9 @@
-import { anthropic } from "@ai-sdk/anthropic";
 import type { TokenUsage } from "@repo/shared";
-import { compactions, messages, OUTPUT_TOKEN_MAX, sessions } from "@repo/shared";
+import { compactions, DEFAULT_MODEL, messages, OUTPUT_TOKEN_MAX, sessions } from "@repo/shared";
 import { generateText } from "ai";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { resolveModel } from "../agent/model.js";
 import type { DB } from "../db/client.js";
 import { estimateTokens } from "./token.js";
 
@@ -27,7 +27,7 @@ export function isOverflow(usage: TokenUsage, contextWindow = 200_000): boolean 
 export async function processCompaction(
   db: DB,
   sessionId: string,
-  model = "claude-sonnet-4-20250514",
+  model = DEFAULT_MODEL,
 ): Promise<void> {
   // Mark session as compacting
   await db
@@ -61,7 +61,7 @@ export async function processCompaction(
 
     // Generate summary
     const { text: summary } = await generateText({
-      model: anthropic(model),
+      model: resolveModel(model),
       system: `You are a conversation summarizer. Create a detailed summary of the following conversation between a user and a coding assistant.
 Include:
 - Key decisions made

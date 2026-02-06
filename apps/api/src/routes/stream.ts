@@ -33,38 +33,43 @@ streamRouter.post("/:sessionId", async (c) => {
   let eventId = 0;
 
   return streamSSE(c, async (stream) => {
-    await runAgentLoop(sessionId, parsed.data.content, {
-      onToken: async (delta) => {
-        await stream.writeSSE({
-          data: JSON.stringify({ delta }),
-          event: "token",
-          id: String(eventId++),
-        });
-      },
+    await runAgentLoop(
+      sessionId,
+      parsed.data.content,
+      {
+        onToken: async (delta) => {
+          await stream.writeSSE({
+            data: JSON.stringify({ delta }),
+            event: "token",
+            id: String(eventId++),
+          });
+        },
 
-      onStepFinish: async (usage, toolResults) => {
-        await stream.writeSSE({
-          data: JSON.stringify({ usage, toolResults }),
-          event: "step-finish",
-          id: String(eventId++),
-        });
-      },
+        onStepFinish: async (usage, toolResults) => {
+          await stream.writeSSE({
+            data: JSON.stringify({ usage, toolResults }),
+            event: "step-finish",
+            id: String(eventId++),
+          });
+        },
 
-      onDone: async (messageId, usage) => {
-        await stream.writeSSE({
-          data: JSON.stringify({ messageId, usage }),
-          event: "done",
-          id: String(eventId++),
-        });
-      },
+        onDone: async (messageId, usage) => {
+          await stream.writeSSE({
+            data: JSON.stringify({ messageId, usage }),
+            event: "done",
+            id: String(eventId++),
+          });
+        },
 
-      onError: async (error) => {
-        await stream.writeSSE({
-          data: JSON.stringify({ message: error.message }),
-          event: "error",
-          id: String(eventId++),
-        });
+        onError: async (error) => {
+          await stream.writeSSE({
+            data: JSON.stringify({ message: error.message }),
+            event: "error",
+            id: String(eventId++),
+          });
+        },
       },
-    });
+      session.model,
+    );
   });
 });

@@ -1,11 +1,11 @@
-import { anthropic } from "@ai-sdk/anthropic";
 import type { TokenUsage } from "@repo/shared";
-import { MAX_STEPS, messageParts, messages } from "@repo/shared";
+import { DEFAULT_MODEL, MAX_STEPS, messageParts, messages } from "@repo/shared";
 import { stepCountIs, streamText } from "ai";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { estimateTokens, isOverflow, processCompaction, prune } from "../compaction/index.js";
 import { db } from "../db/client.js";
+import { resolveModel } from "./model.js";
 import { SYSTEM_PROMPT } from "./prompts.js";
 import { agentTools } from "./tools/index.js";
 
@@ -20,6 +20,7 @@ export async function runAgentLoop(
   sessionId: string,
   userContent: string,
   callbacks: StreamCallbacks,
+  model = DEFAULT_MODEL,
 ) {
   // 1. Run prune before processing
   const prunedTokens = await prune(db, sessionId);
@@ -71,7 +72,7 @@ export async function runAgentLoop(
 
   try {
     const result = streamText({
-      model: anthropic("claude-sonnet-4-20250514"),
+      model: resolveModel(model),
       system: SYSTEM_PROMPT,
       messages: coreMessages,
       tools: agentTools,
@@ -164,7 +165,7 @@ export async function runAgentLoop(
     // 6. Check for overflow after response
     if (isOverflow(totalUsage)) {
       console.log(`Context overflow detected for session ${sessionId}, compacting...`);
-      await processCompaction(db, sessionId);
+      await processCompaction(db, sessionId, model);
     }
   } catch (error) {
     callbacks.onError(error as Error);

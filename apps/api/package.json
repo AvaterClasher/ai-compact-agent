@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.0",
+    "@ai-sdk/openai": "^3.0.25",
     "@repo/shared": "workspace:*",
     "ai": "^6.0.0",
     "drizzle-orm": "^0.38.0",
