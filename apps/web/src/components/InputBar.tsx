@@ -6,6 +6,7 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from "@/components/ai-elements/prompt-input";
+import { Shimmer } from "@/components/ai-elements/shimmer";
 
 interface InputBarProps {
   onSend: (content: string) => void;
@@ -30,9 +31,9 @@ export function InputBar({ onSend, disabled }: InputBarProps) {
           <PromptInputFooter>
             <div className="flex items-center gap-2">
               {disabled && (
-                <span className="font-mono text-[10px] text-primary tracking-wide">
+                <Shimmer as="span" className="font-mono text-[10px] tracking-wide">
                   streaming...
-                </span>
+                </Shimmer>
               )}
             </div>
             <PromptInputSubmit disabled={disabled} />
