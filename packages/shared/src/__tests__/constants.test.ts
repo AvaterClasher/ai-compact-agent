@@ -15,5 +15,5 @@ describe("constants", () => {
   test("MAX_STEPS is 25", () => expect(MAX_STEPS).toBe(25));
   test("DEFAULT_MODEL is claude-sonnet-4-5", () =>
     expect(DEFAULT_MODEL).toBe("claude-sonnet-4-5-20250929"));
-  test("API_PORT is 3001", () => expect(API_PORT).toBe(3001));
+  test("API_PORT is 5001", () => expect(API_PORT).toBe(5001));
 });

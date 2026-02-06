@@ -1,7 +1,8 @@
 "use client";
 
 import type { Session } from "@repo/shared";
-import { MessageSquare, Plus, Terminal } from "lucide-react";
+import { MessageSquare, Pencil, Plus, Terminal, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { EndpointStatus } from "@/hooks/useEndpoint";
 import { AgentSelector } from "./sidebar/AgentSelector";
 import { EndpointConfig } from "./sidebar/EndpointConfig";
@@ -12,6 +13,8 @@ interface SessionSidebarProps {
   activeSessionId: string | null;
   onNewSession: () => void;
   onSelectSession: (id: string) => void;
+  onDeleteSession: (id: string) => void;
+  onRenameSession: (id: string, title: string) => void;
   endpointUrl: string;
   endpointStatus: EndpointStatus;
   onEndpointChange: (url: string) => void;
@@ -26,6 +29,8 @@ export function SessionSidebar({
   activeSessionId,
   onNewSession,
   onSelectSession,
+  onDeleteSession,
+  onRenameSession,
   endpointUrl,
   endpointStatus,
   onEndpointChange,
@@ -34,6 +39,34 @@ export function SessionSidebar({
   onModelChange,
   availableModels,
 }: SessionSidebarProps) {
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (editingId && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editingId]);
+
+  // Clear confirm state when clicking outside
+  useEffect(() => {
+    if (!confirmDeleteId) return;
+    const handler = () => setConfirmDeleteId(null);
+    const timer = setTimeout(() => document.addEventListener("click", handler, { once: true }), 0);
+    return () => clearTimeout(timer);
+  }, [confirmDeleteId]);
+
+  const handleRenameSubmit = (id: string, value: string, originalTitle: string) => {
+    const trimmed = value.trim();
+    if (trimmed && trimmed !== originalTitle) {
+      onRenameSession(id, trimmed);
+    }
+    setEditingId(null);
+  };
+
   return (
     <aside className="w-[260px] border-r border-border bg-card flex flex-col">
       {/* Header */}
@@ -84,17 +117,20 @@ export function SessionSidebar({
           <div className="px-0">
             {sessions.map((session, i) => {
               const isActive = session.id === activeSessionId;
+              const isConfirmingDelete = confirmDeleteId === session.id;
+              const isEditing = editingId === session.id;
+
               return (
                 <button
                   type="button"
                   key={session.id}
-                  onClick={() => onSelectSession(session.id)}
                   className={`group w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-left text-sm transition-colors duration-150 mb-0.5 cursor-pointer ${
                     isActive
                       ? "bg-primary/10 text-foreground border border-primary/20"
                       : "text-muted-foreground hover:bg-secondary hover:text-foreground border border-transparent"
                   }`}
                   style={{ animationDelay: `${i * 30}ms` }}
+                  onClick={() => !isEditing && onSelectSession(session.id)}
                 >
                   <div className="relative shrink-0">
                     <MessageSquare
@@ -104,7 +140,70 @@ export function SessionSidebar({
                       <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-success" />
                     )}
                   </div>
-                  <span className="truncate text-[13px]">{session.title}</span>
+
+                  {isEditing ? (
+                    <input
+                      ref={editInputRef}
+                      defaultValue={session.title}
+                      className="flex-1 min-w-0 bg-transparent text-[13px] text-foreground border-b border-primary/40 outline-none px-0 py-0"
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                        if (e.key === "Enter") {
+                          handleRenameSubmit(session.id, e.currentTarget.value, session.title);
+                        }
+                        if (e.key === "Escape") {
+                          setEditingId(null);
+                        }
+                      }}
+                      onBlur={(e) => {
+                        handleRenameSubmit(session.id, e.target.value, session.title);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <span className="truncate text-[13px] flex-1 min-w-0">{session.title}</span>
+                  )}
+
+                  {/* Action buttons */}
+                  {!isEditing && (
+                    <div className="ml-auto opacity-0 group-hover:opacity-100 flex items-center gap-0.5 shrink-0 transition-opacity duration-100">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingId(session.id);
+                        }}
+                        className="p-1 rounded text-dim hover:text-foreground hover:bg-secondary"
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                      {isConfirmingDelete ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteSession(session.id);
+                            setConfirmDeleteId(null);
+                          }}
+                          className="p-1 rounded text-destructive hover:bg-destructive/10"
+                          title="Click to confirm delete"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmDeleteId(session.id);
+                          }}
+                          className="p-1 rounded text-dim hover:text-foreground hover:bg-secondary"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </button>
               );
             })}

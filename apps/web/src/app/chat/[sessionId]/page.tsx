@@ -14,8 +14,10 @@ export default function ChatPage() {
   const router = useRouter();
   const sessionId = params.sessionId as string;
 
-  const { sessions, createSession } = useSessions();
-  const { messages, isStreaming, sendMessage, tokenUsage } = useChat(sessionId);
+  const { sessions, createSession, deleteSession, updateSession, refreshSession } = useSessions();
+  const { messages, isStreaming, sendMessage, tokenUsage } = useChat(sessionId, () => {
+    refreshSession(sessionId);
+  });
   const { url, status, setUrl, refresh } = useEndpoint();
   const { model, setModel, availableModels } = useModelSelector(sessionId);
 
@@ -33,6 +35,18 @@ export default function ChatPage() {
     router.push(`/chat/${session.id}`);
   };
 
+  const handleDeleteSession = async (id: string) => {
+    await deleteSession(id);
+    if (id === sessionId) {
+      const remaining = sessions.filter((s) => s.id !== id);
+      router.push(remaining.length > 0 ? `/chat/${remaining[0].id}` : "/");
+    }
+  };
+
+  const handleRenameSession = async (id: string, title: string) => {
+    await updateSession(id, { title });
+  };
+
   return (
     <>
       <SessionSidebar
@@ -40,6 +54,8 @@ export default function ChatPage() {
         activeSessionId={sessionId}
         onNewSession={handleNewSession}
         onSelectSession={(id) => router.push(`/chat/${id}`)}
+        onDeleteSession={handleDeleteSession}
+        onRenameSession={handleRenameSession}
         endpointUrl={url}
         endpointStatus={status}
         onEndpointChange={setUrl}
@@ -52,6 +68,7 @@ export default function ChatPage() {
         messages={messages}
         isStreaming={isStreaming}
         tokenUsage={tokenUsage}
+        model={model}
         onSendMessage={sendMessage}
       />
     </>

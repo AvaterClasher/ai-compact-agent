@@ -4,7 +4,7 @@ import type { Message, TokenUsage } from "@repo/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 
-export function useChat(sessionId: string) {
+export function useChat(sessionId: string, onFirstMessage?: () => void) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [tokenUsage, setTokenUsage] = useState<TokenUsage>({
@@ -15,6 +15,7 @@ export function useChat(sessionId: string) {
     cacheWrite: 0,
   });
   const streamingContentRef = useRef("");
+  const messageCountRef = useRef(0);
 
   // Load existing messages
   useEffect(() => {
@@ -22,6 +23,7 @@ export function useChat(sessionId: string) {
       try {
         const data = await api.getMessages(sessionId);
         setMessages(data);
+        messageCountRef.current = data.filter((m) => m.role === "user").length;
       } catch (error) {
         console.error("Failed to load messages:", error);
       }
@@ -32,6 +34,9 @@ export function useChat(sessionId: string) {
   const sendMessage = useCallback(
     async (content: string) => {
       if (isStreaming) return;
+
+      const isFirstMessage = messageCountRef.current === 0;
+      messageCountRef.current++;
 
       // Optimistically add user message
       const userMessage: Message = {
@@ -104,6 +109,11 @@ export function useChat(sessionId: string) {
                 }
                 return updated;
               });
+              // Auto-generate title on first message
+              if (isFirstMessage) {
+                api.generateTitle(sessionId, content).catch(console.error);
+                setTimeout(() => onFirstMessage?.(), 3000);
+              }
               break;
 
             case "error":
@@ -117,7 +127,7 @@ export function useChat(sessionId: string) {
         setIsStreaming(false);
       }
     },
-    [sessionId, isStreaming],
+    [sessionId, isStreaming, onFirstMessage],
   );
 
   return { messages, isStreaming, tokenUsage, sendMessage };

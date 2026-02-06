@@ -1,6 +1,6 @@
 "use client";
 
-import type { Session } from "@repo/shared";
+import type { Session, UpdateSessionInput } from "@repo/shared";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
@@ -34,5 +34,29 @@ export function useSessions() {
     setSessions((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
-  return { sessions, loading, createSession, deleteSession, refreshSessions: fetchSessions };
+  const updateSession = useCallback(async (id: string, input: UpdateSessionInput) => {
+    const updated = await api.updateSession(id, input);
+    setSessions((prev) => prev.map((s) => (s.id === id ? updated : s)));
+    return updated;
+  }, []);
+
+  const refreshSession = useCallback(async (id: string) => {
+    try {
+      const session = await api.getSession(id);
+      setSessions((prev) => prev.map((s) => (s.id === id ? session : s)));
+      return session;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  return {
+    sessions,
+    loading,
+    createSession,
+    deleteSession,
+    updateSession,
+    refreshSession,
+    refreshSessions: fetchSessions,
+  };
 }

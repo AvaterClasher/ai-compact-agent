@@ -9,7 +9,7 @@ import { useSessions } from "@/hooks/useSessions";
 
 export default function Home() {
   const router = useRouter();
-  const { sessions, createSession } = useSessions();
+  const { sessions, createSession, deleteSession, updateSession } = useSessions();
   const { url, status, setUrl, refresh } = useEndpoint();
   const { model, setModel, availableModels } = useModelSelector(null);
 
@@ -25,6 +25,8 @@ export default function Home() {
         activeSessionId={null}
         onNewSession={handleNewSession}
         onSelectSession={(id) => router.push(`/chat/${id}`)}
+        onDeleteSession={(id) => deleteSession(id)}
+        onRenameSession={(id, title) => updateSession(id, { title })}
         endpointUrl={url}
         endpointStatus={status}
         onEndpointChange={setUrl}
