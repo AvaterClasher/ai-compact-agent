@@ -70,7 +70,7 @@ describe("envSchema", () => {
   test("applies defaults for DATABASE_PATH and PORT", () => {
     const result = envSchema.parse({ ANTHROPIC_API_KEY: "sk-test-key" });
     expect(result.DATABASE_PATH).toBe("./data/agent.db");
-    expect(result.PORT).toBe(3001);
+    expect(result.PORT).toBe(5001);
   });
 
   test("coerces PORT from string to number", () => {

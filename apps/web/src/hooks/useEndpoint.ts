@@ -12,7 +12,7 @@ interface EndpointState {
 
 export function useEndpoint() {
   const [state, setState] = useState<EndpointState>({
-    url: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001",
+    url: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001",
     status: "checking",
   });
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
