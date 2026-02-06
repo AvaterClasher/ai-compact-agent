@@ -11,7 +11,7 @@ interface StatusIndicatorProps {
 function TokenPill({ label, value }: { label: string; value: number }) {
   if (value === 0) return null;
   return (
-    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-gray-100 border border-border">
+    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-secondary border border-border">
       <span className="text-dim">{label}</span>
       <span className="text-foreground font-medium tabular-nums">{value.toLocaleString()}</span>
     </div>
