@@ -2,35 +2,55 @@
 
 import type { TokenUsage } from "@repo/shared";
 import { Cpu } from "lucide-react";
+import {
+  Context,
+  ContextCacheUsage,
+  ContextContent,
+  ContextContentBody,
+  ContextContentFooter,
+  ContextContentHeader,
+  ContextInputUsage,
+  ContextOutputUsage,
+  ContextReasoningUsage,
+  ContextTrigger,
+} from "@/components/ai-elements/context";
+import { Shimmer } from "@/components/ai-elements/shimmer";
 
 interface StatusIndicatorProps {
   usage: TokenUsage;
   isStreaming: boolean;
+  model: string;
 }
 
-function TokenPill({ label, value }: { label: string; value: number }) {
-  if (value === 0) return null;
-  return (
-    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-secondary border border-border">
-      <span className="text-dim">{label}</span>
-      <span className="text-foreground font-medium tabular-nums">{value.toLocaleString()}</span>
-    </div>
-  );
-}
+const CONTEXT_WINDOW = 200_000;
 
-export function StatusIndicator({ usage, isStreaming }: StatusIndicatorProps) {
-  const totalTokens = usage.input + usage.output;
+export function StatusIndicator({ usage, isStreaming, model }: StatusIndicatorProps) {
+  const usedTokens = usage.input + usage.output;
+
+  const aiUsage = {
+    inputTokens: usage.input,
+    outputTokens: usage.output,
+    totalTokens: usage.input + usage.output,
+    reasoningTokens: usage.reasoning,
+    cachedInputTokens: usage.cacheRead,
+    inputTokenDetails: {
+      noCacheTokens: undefined,
+      cacheReadTokens: usage.cacheRead || undefined,
+      cacheWriteTokens: usage.cacheWrite || undefined,
+    },
+    outputTokenDetails: {
+      textTokens: undefined,
+      reasoningTokens: usage.reasoning || undefined,
+    },
+  };
 
   return (
     <div className="flex items-center justify-between px-4 py-1.5 border-b border-border font-mono text-[11px] text-muted-foreground">
       <div className="flex items-center gap-2">
         {isStreaming ? (
-          <>
-            <div className="flex items-center justify-center w-4 h-4">
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse-dot" />
-            </div>
-            <span className="text-primary font-medium tracking-wide">STREAMING</span>
-          </>
+          <Shimmer as="span" className="text-xs font-medium tracking-wide">
+            STREAMING
+          </Shimmer>
         ) : (
           <>
             <Cpu className="w-3 h-3 text-dim" />
@@ -39,13 +59,21 @@ export function StatusIndicator({ usage, isStreaming }: StatusIndicatorProps) {
         )}
       </div>
 
-      {totalTokens > 0 && (
-        <div className="flex items-center gap-1.5">
-          <TokenPill label="in" value={usage.input} />
-          <TokenPill label="out" value={usage.output} />
-          {usage.cacheRead > 0 && <TokenPill label="cache" value={usage.cacheRead} />}
-        </div>
-      )}
+      <Context usedTokens={usedTokens} maxTokens={CONTEXT_WINDOW} usage={aiUsage} modelId={model}>
+        <ContextTrigger />
+        <ContextContent>
+          <ContextContentHeader />
+          <ContextContentBody>
+            <div className="space-y-1.5">
+              <ContextInputUsage />
+              <ContextOutputUsage />
+              <ContextReasoningUsage />
+              <ContextCacheUsage />
+            </div>
+          </ContextContentBody>
+          <ContextContentFooter />
+        </ContextContent>
+      </Context>
     </div>
   );
 }
