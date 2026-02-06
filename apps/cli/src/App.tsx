@@ -8,7 +8,16 @@ import { useSession } from "./hooks/useSession.js";
 export function App() {
   const renderer = useRenderer();
   const [view, setView] = useState<"picker" | "chat">("picker");
-  const { session, sessions, selectSession, createSession, tokenUsage } = useSession();
+  const {
+    session,
+    sessions,
+    selectSession,
+    createSession,
+    deleteSession,
+    updateSession,
+    refreshSession,
+    tokenUsage,
+  } = useSession();
 
   useKeyboard((key) => {
     if (key.name === "escape") {
@@ -44,9 +53,15 @@ export function App() {
               await createSession();
               setView("chat");
             }}
+            onDelete={async (id) => {
+              await deleteSession(id);
+            }}
+            onRename={async (id, title) => {
+              await updateSession(id, title);
+            }}
           />
         ) : session ? (
-          <ChatView sessionId={session.id} />
+          <ChatView sessionId={session.id} onTitleGenerated={() => refreshSession(session.id)} />
         ) : null}
       </box>
 

@@ -1,10 +1,10 @@
 import type { Message, TokenUsage } from "@repo/shared";
 import { AgentAPIClient } from "@repo/shared/api-client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const api = new AgentAPIClient();
 
-export function useAgent(sessionId: string) {
+export function useAgent(sessionId: string, onFirstMessage?: () => void) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [tokenUsage, setTokenUsage] = useState<TokenUsage>({
@@ -14,15 +14,25 @@ export function useAgent(sessionId: string) {
     cacheRead: 0,
     cacheWrite: 0,
   });
+  const messageCountRef = useRef(0);
 
   // Load existing messages
   useEffect(() => {
-    api.getMessages(sessionId).then(setMessages).catch(console.error);
+    api
+      .getMessages(sessionId)
+      .then((data) => {
+        setMessages(data);
+        messageCountRef.current = data.filter((m) => m.role === "user").length;
+      })
+      .catch(console.error);
   }, [sessionId]);
 
   const sendMessage = useCallback(
     async (content: string) => {
       if (isStreaming) return;
+
+      const isFirstMessage = messageCountRef.current === 0;
+      messageCountRef.current++;
 
       // Add user message
       const userMsg: Message = {
@@ -80,6 +90,10 @@ export function useAgent(sessionId: string) {
 
             case "done":
               setTokenUsage(event.data.usage);
+              if (isFirstMessage) {
+                api.generateTitle(sessionId, content).catch(console.error);
+                setTimeout(() => onFirstMessage?.(), 3000);
+              }
               break;
 
             case "error":
@@ -93,7 +107,7 @@ export function useAgent(sessionId: string) {
         setIsStreaming(false);
       }
     },
-    [sessionId, isStreaming],
+    [sessionId, isStreaming, onFirstMessage],
   );
 
   return { messages, isStreaming, tokenUsage, sendMessage };
