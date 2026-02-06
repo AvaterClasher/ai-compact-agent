@@ -3,7 +3,7 @@ import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 export const sessions = sqliteTable("sessions", {
   id: text("id").primaryKey(),
   title: text("title").notNull().default("New Session"),
-  model: text("model").notNull().default("claude-sonnet-4-20250514"),
+  model: text("model").notNull().default("claude-sonnet-4-5-20250929"),
   status: text("status", { enum: ["active", "compacting", "archived"] })
     .notNull()
     .default("active"),
