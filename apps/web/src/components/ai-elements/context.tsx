@@ -197,12 +197,16 @@ export const ContextContentFooter = ({
   ...props
 }: ContextContentFooterProps) => {
   const { modelId, usage } = useContextValue();
+  // biome-ignore lint/suspicious/noExplicitAny: tokenlens usage fields extend beyond LanguageModelUsage
+  const ext = usage as any;
   const costUSD = modelId
     ? getUsage({
         modelId,
         usage: {
           input: usage?.inputTokens ?? 0,
           output: usage?.outputTokens ?? 0,
+          reasoningTokens: ext?.reasoningTokens ?? 0,
+          cacheReads: usage?.cachedInputTokens ?? 0,
         },
       }).costUSD?.totalUSD
     : undefined;

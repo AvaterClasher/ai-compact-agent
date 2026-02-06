@@ -1,7 +1,7 @@
 "use client";
 
 import type { Message as SalvadorMessage } from "@repo/shared";
-import { Bot, CopyIcon, Info } from "lucide-react";
+import { CopyIcon } from "lucide-react";
 import {
   Message,
   MessageAction,
@@ -21,15 +21,10 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
   if (isSystem) {
     return (
-      <div className="py-2 animate-fade-in">
+      <div className="py-1.5">
         <Message from="system">
           <MessageContent>
-            <div className="flex items-start gap-2.5 px-4 py-3 rounded-md bg-secondary border border-border">
-              <Info className="w-3.5 h-3.5 text-dim mt-0.5 shrink-0" />
-              <div className="text-[13px] leading-relaxed text-muted-foreground whitespace-pre-wrap font-mono">
-                {message.content || <span className="text-dim italic">empty</span>}
-              </div>
-            </div>
+            <div className="text-xs text-muted-foreground italic">{message.content}</div>
           </MessageContent>
         </Message>
       </div>
@@ -38,9 +33,13 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
   if (isUser) {
     return (
-      <div className="py-2 animate-slide-right">
+      <div className="py-3">
         <Message from="user">
-          <MessageContent>{message.content}</MessageContent>
+          <MessageContent>
+            <div className="text-[15px] leading-relaxed text-foreground whitespace-pre-wrap">
+              {message.content}
+            </div>
+          </MessageContent>
         </Message>
       </div>
     );
@@ -48,36 +47,29 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
   // Assistant message
   return (
-    <div className="py-2 animate-slide-left">
-      <div className="flex items-start gap-3">
-        <div className="w-6 h-6 rounded-md bg-card border border-border flex items-center justify-center shrink-0 mt-0.5">
-          <Bot className="w-3 h-3 text-foreground" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <Message from="assistant">
-            <MessageContent>
-              {message.content ? (
-                <MessageResponse>{message.content}</MessageResponse>
-              ) : (
-                <Shimmer as="span" className="text-sm">
-                  Thinking...
-                </Shimmer>
-              )}
-            </MessageContent>
-            {message.content && (
-              <MessageActions>
-                <MessageAction
-                  tooltip="Copy"
-                  label="Copy message"
-                  onClick={() => navigator.clipboard.writeText(message.content)}
-                >
-                  <CopyIcon className="size-3" />
-                </MessageAction>
-              </MessageActions>
-            )}
-          </Message>
-        </div>
-      </div>
+    <div className="py-3">
+      <Message from="assistant">
+        <MessageContent>
+          {message.content ? (
+            <MessageResponse>{message.content}</MessageResponse>
+          ) : (
+            <Shimmer as="span" className="text-sm">
+              Thinking...
+            </Shimmer>
+          )}
+        </MessageContent>
+        {message.content && (
+          <MessageActions>
+            <MessageAction
+              tooltip="Copy"
+              label="Copy message"
+              onClick={() => navigator.clipboard.writeText(message.content)}
+            >
+              <CopyIcon className="size-3" />
+            </MessageAction>
+          </MessageActions>
+        )}
+      </Message>
     </div>
   );
 }

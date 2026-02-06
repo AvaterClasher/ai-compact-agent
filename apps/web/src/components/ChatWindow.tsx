@@ -3,7 +3,6 @@
 import type { Message, TokenUsage } from "@repo/shared";
 import { InputBar } from "./InputBar";
 import { MessageList } from "./MessageList";
-import { StatusIndicator } from "./StatusIndicator";
 
 interface ChatWindowProps {
   messages: Message[];
@@ -22,9 +21,8 @@ export function ChatWindow({
 }: ChatWindowProps) {
   return (
     <main className="flex-1 flex flex-col bg-background relative">
-      <StatusIndicator usage={tokenUsage} isStreaming={isStreaming} model={model} />
-      <MessageList messages={messages} isStreaming={isStreaming} />
-      <InputBar onSend={onSendMessage} disabled={isStreaming} />
+      <MessageList messages={messages} />
+      <InputBar onSend={onSendMessage} disabled={isStreaming} usage={tokenUsage} model={model} />
     </main>
   );
 }

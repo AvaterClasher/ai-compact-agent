@@ -17,13 +17,26 @@ export function useChat(sessionId: string, onFirstMessage?: () => void) {
   const streamingContentRef = useRef("");
   const messageCountRef = useRef(0);
 
-  // Load existing messages
+  // Load existing messages and restore token usage
   useEffect(() => {
     const load = async () => {
       try {
         const data = await api.getMessages(sessionId);
         setMessages(data);
         messageCountRef.current = data.filter((m) => m.role === "user").length;
+
+        // Restore token usage from the last assistant message (reflects context state)
+        const assistantMsgs = data.filter((m) => m.role === "assistant");
+        if (assistantMsgs.length > 0) {
+          const last = assistantMsgs[assistantMsgs.length - 1];
+          setTokenUsage({
+            input: last.tokensInput,
+            output: assistantMsgs.reduce((sum, m) => sum + m.tokensOutput, 0),
+            reasoning: assistantMsgs.reduce((sum, m) => sum + m.tokensReasoning, 0),
+            cacheRead: last.tokensCacheRead,
+            cacheWrite: last.tokensCacheWrite,
+          });
+        }
       } catch (error) {
         console.error("Failed to load messages:", error);
       }
