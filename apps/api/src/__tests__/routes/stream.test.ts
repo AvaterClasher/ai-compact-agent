@@ -23,6 +23,7 @@ mock.module("../../agent/loop.js", () => ({
     callbacks: {
       onToken: (delta: string) => Promise<void>;
       onStepFinish: (usage: unknown, toolResults?: unknown[]) => Promise<void>;
+      onCompaction: () => Promise<void>;
       onDone: (messageId: string, usage: unknown) => Promise<void>;
       onError: (error: Error) => Promise<void>;
     },

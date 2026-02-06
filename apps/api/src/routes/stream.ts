@@ -53,6 +53,14 @@ streamRouter.post("/:sessionId", async (c) => {
           });
         },
 
+        onCompaction: async () => {
+          await stream.writeSSE({
+            data: JSON.stringify({}),
+            event: "compaction",
+            id: String(eventId++),
+          });
+        },
+
         onDone: async (messageId, usage) => {
           await stream.writeSSE({
             data: JSON.stringify({ messageId, usage }),
