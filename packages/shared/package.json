@@ -7,6 +7,9 @@
     "./db": "./src/db/schema.ts",
     "./api-client": "./src/api-client.ts"
   },
+  "scripts": {
+    "test": "bun test"
+  },
   "dependencies": {
     "drizzle-orm": "^0.38.0",
     "zod": "^3.24.0"
