@@ -2,7 +2,7 @@ import { createSessionSchema, sessions, updateSessionSchema } from "@repo/shared
 import { desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { nanoid } from "nanoid";
-import { getAvailableModels, getDefaultModel } from "../agent/model.js";
+import { getDefaultModel } from "../agent/model.js";
 import { generateSessionTitle } from "../agent/title.js";
 import { db } from "../db/client.js";
 
