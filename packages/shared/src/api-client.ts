@@ -57,6 +57,10 @@ export class AgentAPIClient {
     });
   }
 
+  async getModels(): Promise<{ models: string[]; default: string }> {
+    return this.fetch("/api/models");
+  }
+
   async getMessages(sessionId: string): Promise<Message[]> {
     return this.fetch<Message[]>(`/api/messages/${sessionId}`);
   }
@@ -84,6 +88,8 @@ export class AgentAPIClient {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    let currentEvent = "";
+    let currentData = "";
 
     while (true) {
       const { done, value } = await reader.read();
@@ -93,9 +99,6 @@ export class AgentAPIClient {
 
       const lines = buffer.split("\n");
       buffer = lines.pop() || "";
-
-      let currentEvent = "";
-      let currentData = "";
 
       for (const line of lines) {
         if (line.startsWith("event: ")) {
