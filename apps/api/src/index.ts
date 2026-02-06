@@ -21,7 +21,7 @@ app.route("/api/stream", streamRouter);
 // Health check
 app.get("/api/health", (c) => c.json({ status: "ok" }));
 
-const port = Number(process.env.PORT) || 3001;
+const port = Number(process.env.PORT) || 5001;
 
 console.log(`API server starting on port ${port}`);
 
