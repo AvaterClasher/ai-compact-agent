@@ -14,7 +14,7 @@ interface ChatWindowProps {
 
 export function ChatWindow({ messages, isStreaming, tokenUsage, onSendMessage }: ChatWindowProps) {
   return (
-    <main className="flex-1 flex flex-col">
+    <main className="flex-1 flex flex-col bg-background relative">
       <StatusIndicator usage={tokenUsage} isStreaming={isStreaming} />
       <MessageList messages={messages} isStreaming={isStreaming} />
       <InputBar onSend={onSendMessage} disabled={isStreaming} />
