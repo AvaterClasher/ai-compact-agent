@@ -2,15 +2,31 @@
   "name": "salvador",
   "private": true,
   "type": "module",
-  "workspaces": ["apps/*", "packages/*"],
+  "packageManager": "bun@1.2.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "turbo dev",
+    "dev:api": "turbo dev --filter=@repo/api",
+    "dev:web": "turbo dev --filter=@repo/web",
+    "dev:cli": "turbo dev --filter=@repo/cli",
     "build": "turbo build",
     "check-types": "turbo check-types",
+    "test": "turbo test",
+    "test:api": "turbo test --filter=@repo/api",
+    "test:shared": "turbo test --filter=@repo/shared",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "prepare": "lefthook install",
     "db:generate": "turbo db:generate --filter=@repo/api",
     "db:migrate": "turbo db:migrate --filter=@repo/api"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.3.14",
+    "lefthook": "^2.1.0",
     "turbo": "^2.4.0",
     "typescript": "^5.7.0"
   }
