@@ -36,6 +36,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # SQLite database
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
+apps/api/data/
 
 # Turbo
 .turbo
