@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { useKeyboard, useRenderer } from "@opentui/react";
+import { useState } from "react";
 import { ChatView } from "./components/ChatView.js";
 import { SessionPicker } from "./components/SessionPicker.js";
 import { StatusBar } from "./components/StatusBar.js";

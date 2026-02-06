@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
 import type { Message, TokenUsage } from "@repo/shared";
 import { AgentAPIClient } from "@repo/shared/api-client";
+import { useCallback, useEffect, useState } from "react";
 
 const api = new AgentAPIClient();
 
@@ -93,7 +93,7 @@ export function useAgent(sessionId: string) {
         setIsStreaming(false);
       }
     },
-    [sessionId, isStreaming]
+    [sessionId, isStreaming],
   );
 
   return { messages, isStreaming, tokenUsage, sendMessage };

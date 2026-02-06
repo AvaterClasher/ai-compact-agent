@@ -1,17 +1,11 @@
-import { eq, desc } from "drizzle-orm";
-import { generateText } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
-import { nanoid } from "nanoid";
-import {
-  messages,
-  compactions,
-  sessions,
-  OUTPUT_TOKEN_MAX,
-} from "@repo/shared";
-import { estimateTokens } from "./token.js";
-import { prune } from "./prune.js";
-import type { DB } from "../db/client.js";
 import type { TokenUsage } from "@repo/shared";
+import { compactions, messages, OUTPUT_TOKEN_MAX, sessions } from "@repo/shared";
+import { generateText } from "ai";
+import { eq } from "drizzle-orm";
+import { nanoid } from "nanoid";
+import type { DB } from "../db/client.js";
+import { estimateTokens } from "./token.js";
 
 export { prune } from "./prune.js";
 export { estimateTokens } from "./token.js";
@@ -33,7 +27,7 @@ export function isOverflow(usage: TokenUsage, contextWindow = 200_000): boolean 
 export async function processCompaction(
   db: DB,
   sessionId: string,
-  model = "claude-sonnet-4-20250514"
+  model = "claude-sonnet-4-20250514",
 ): Promise<void> {
   // Mark session as compacting
   await db
@@ -58,10 +52,7 @@ export async function processCompaction(
     }
 
     // Estimate tokens before compaction
-    const tokensBefore = sessionMessages.reduce(
-      (sum, msg) => sum + estimateTokens(msg.content),
-      0
-    );
+    const tokensBefore = sessionMessages.reduce((sum, msg) => sum + estimateTokens(msg.content), 0);
 
     // Build conversation text for summarization
     const conversationText = sessionMessages
@@ -124,7 +115,7 @@ Be thorough but concise. This summary will replace the full conversation history
       .where(eq(sessions.id, sessionId));
 
     console.log(
-      `Compacted session ${sessionId}: ${tokensBefore} -> ${tokensAfter} tokens (${sessionMessages.length} messages)`
+      `Compacted session ${sessionId}: ${tokensBefore} -> ${tokensAfter} tokens (${sessionMessages.length} messages)`,
     );
   } catch (error) {
     // Restore session status on error

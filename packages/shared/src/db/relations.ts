@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { sessions, messages, messageParts, compactions } from "./schema.js";
+import { compactions, messageParts, messages, sessions } from "./schema.js";
 
 export const sessionsRelations = relations(sessions, ({ many }) => ({
   messages: many(messages),

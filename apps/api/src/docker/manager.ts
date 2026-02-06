@@ -9,21 +9,29 @@ const CONTAINER_PREFIX = "salvador-sandbox-";
 export async function createContainer(sessionId: string): Promise<string> {
   const containerName = `${CONTAINER_PREFIX}${sessionId}`;
 
-  const proc = Bun.spawn([
-    "docker",
-    "run",
-    "-d",
-    "--name", containerName,
-    "--memory", "512m",
-    "--cpus", "1",
-    "--network", "none",
-    "--rm",
-    SANDBOX_IMAGE,
-    "sleep", "3600",
-  ], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
+  const proc = Bun.spawn(
+    [
+      "docker",
+      "run",
+      "-d",
+      "--name",
+      containerName,
+      "--memory",
+      "512m",
+      "--cpus",
+      "1",
+      "--network",
+      "none",
+      "--rm",
+      SANDBOX_IMAGE,
+      "sleep",
+      "3600",
+    ],
+    {
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  );
 
   const stdout = await new Response(proc.stdout).text();
   const stderr = await new Response(proc.stderr).text();
@@ -50,10 +58,10 @@ export async function removeContainer(sessionId: string): Promise<void> {
 export async function isContainerRunning(sessionId: string): Promise<boolean> {
   const containerName = `${CONTAINER_PREFIX}${sessionId}`;
 
-  const proc = Bun.spawn(
-    ["docker", "inspect", "-f", "{{.State.Running}}", containerName],
-    { stdout: "pipe", stderr: "pipe" }
-  );
+  const proc = Bun.spawn(["docker", "inspect", "-f", "{{.State.Running}}", containerName], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
 
   const stdout = await new Response(proc.stdout).text();
   const exitCode = await proc.exited;

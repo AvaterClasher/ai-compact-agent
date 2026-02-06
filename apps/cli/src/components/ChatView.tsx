@@ -1,7 +1,7 @@
-import { MessageList } from "./MessageList.js";
-import { InputBar } from "./InputBar.js";
-import { Spinner } from "./Spinner.js";
 import { useAgent } from "../hooks/useAgent.js";
+import { InputBar } from "./InputBar.js";
+import { MessageList } from "./MessageList.js";
+import { Spinner } from "./Spinner.js";
 
 interface ChatViewProps {
   sessionId: string;
@@ -21,10 +21,7 @@ export function ChatView({ sessionId }: ChatViewProps) {
         </box>
       )}
 
-      <InputBar
-        onSubmit={sendMessage}
-        disabled={isStreaming}
-      />
+      <InputBar onSubmit={sendMessage} disabled={isStreaming} />
     </box>
   );
 }

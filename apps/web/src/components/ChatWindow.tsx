@@ -1,8 +1,8 @@
 "use client";
 
 import type { Message, TokenUsage } from "@repo/shared";
-import { MessageList } from "./MessageList";
 import { InputBar } from "./InputBar";
+import { MessageList } from "./MessageList";
 import { StatusIndicator } from "./StatusIndicator";
 
 interface ChatWindowProps {
@@ -12,12 +12,7 @@ interface ChatWindowProps {
   onSendMessage: (content: string) => void;
 }
 
-export function ChatWindow({
-  messages,
-  isStreaming,
-  tokenUsage,
-  onSendMessage,
-}: ChatWindowProps) {
+export function ChatWindow({ messages, isStreaming, tokenUsage, onSendMessage }: ChatWindowProps) {
   return (
     <main className="flex-1 flex flex-col">
       <StatusIndicator usage={tokenUsage} isStreaming={isStreaming} />

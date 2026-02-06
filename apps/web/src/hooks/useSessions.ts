@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
 import type { Session } from "@repo/shared";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
 export function useSessions() {

@@ -2,7 +2,8 @@ import { tool } from "ai";
 import { z } from "zod";
 
 export const shellTool = tool({
-  description: "Run a shell command and return its output. Use for system operations like ls, git, npm, etc.",
+  description:
+    "Run a shell command and return its output. Use for system operations like ls, git, npm, etc.",
   inputSchema: z.object({
     command: z.string().describe("The shell command to execute"),
     cwd: z.string().optional().describe("Working directory for the command"),

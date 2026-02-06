@@ -1,6 +1,5 @@
-import { db } from "./client.js";
-import { sessions, messages, messageParts, compactions } from "@repo/shared";
 import { sql } from "drizzle-orm";
+import { db } from "./client.js";
 
 // Simple migration: create tables if they don't exist
 // For production, use drizzle-kit generate + migrate

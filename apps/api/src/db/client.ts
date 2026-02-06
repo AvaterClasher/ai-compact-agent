@@ -1,19 +1,19 @@
-import { drizzle } from "drizzle-orm/bun-sqlite";
 import { Database } from "bun:sqlite";
-import * as schema from "@repo/shared/db";
 import {
-  sessionsRelations,
-  messagesRelations,
-  messagePartsRelations,
   compactionsRelations,
+  messagePartsRelations,
+  messagesRelations,
+  sessionsRelations,
 } from "@repo/shared";
+import * as schema from "@repo/shared/db";
+import { drizzle } from "drizzle-orm/bun-sqlite";
 
 const dbPath = process.env.DATABASE_PATH || "./data/agent.db";
 
 // Ensure the data directory exists
 const dir = dbPath.substring(0, dbPath.lastIndexOf("/"));
 if (dir) {
-  await Bun.write(Bun.file(dir + "/.keep"), "");
+  await Bun.write(Bun.file(`${dir}/.keep`), "");
 }
 
 const sqlite = new Database(dbPath, { create: true });

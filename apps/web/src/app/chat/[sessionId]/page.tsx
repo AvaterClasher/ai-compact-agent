@@ -1,10 +1,10 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { SessionSidebar } from "@/components/SessionSidebar";
 import { ChatWindow } from "@/components/ChatWindow";
-import { useSessions } from "@/hooks/useSessions";
+import { SessionSidebar } from "@/components/SessionSidebar";
 import { useChat } from "@/hooks/useChat";
+import { useSessions } from "@/hooks/useSessions";
 
 export default function ChatPage() {
   const params = useParams();

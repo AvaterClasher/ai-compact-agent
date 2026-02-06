@@ -1,7 +1,7 @@
-import type { Session, CreateSessionInput, UpdateSessionInput } from "./types/session.js";
-import type { Message, SendMessageInput } from "./types/message.js";
-import type { SSEEvent } from "./types/agent.js";
 import { API_BASE_URL } from "./constants.js";
+import type { SSEEvent } from "./types/agent.js";
+import type { Message, SendMessageInput } from "./types/message.js";
+import type { CreateSessionInput, Session, UpdateSessionInput } from "./types/session.js";
 
 export class AgentAPIClient {
   private baseUrl: string;
@@ -58,10 +58,7 @@ export class AgentAPIClient {
    * Send a message and receive streamed SSE events.
    * Returns an async generator of SSEEvent objects.
    */
-  async *streamMessage(
-    sessionId: string,
-    input: SendMessageInput
-  ): AsyncGenerator<SSEEvent> {
+  async *streamMessage(sessionId: string, input: SendMessageInput): AsyncGenerator<SSEEvent> {
     const res = await fetch(`${this.baseUrl}/api/stream/${sessionId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

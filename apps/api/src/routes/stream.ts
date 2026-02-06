@@ -1,9 +1,9 @@
+import { sendMessageSchema, sessions } from "@repo/shared";
+import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
-import { eq } from "drizzle-orm";
-import { sessions, sendMessageSchema } from "@repo/shared";
-import { db } from "../db/client.js";
 import { runAgentLoop } from "../agent/loop.js";
+import { db } from "../db/client.js";
 
 export const streamRouter = new Hono();
 
@@ -12,10 +12,7 @@ streamRouter.post("/:sessionId", async (c) => {
   const sessionId = c.req.param("sessionId");
 
   // Verify session exists
-  const [session] = await db
-    .select()
-    .from(sessions)
-    .where(eq(sessions.id, sessionId));
+  const [session] = await db.select().from(sessions).where(eq(sessions.id, sessionId));
 
   if (!session) {
     return c.json({ error: "Session not found" }, 404);

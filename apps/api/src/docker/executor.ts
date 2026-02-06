@@ -7,7 +7,7 @@ const CONTAINER_PREFIX = "salvador-sandbox-";
 export async function execInContainer(
   sessionId: string,
   command: string,
-  options: { cwd?: string; timeout?: number } = {}
+  options: { cwd?: string; timeout?: number } = {},
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   const containerName = `${CONTAINER_PREFIX}${sessionId}`;
   const { cwd, timeout = 30000 } = options;
@@ -58,14 +58,14 @@ export async function execInContainer(
 export async function copyToContainer(
   sessionId: string,
   localPath: string,
-  containerPath: string
+  containerPath: string,
 ): Promise<void> {
   const containerName = `${CONTAINER_PREFIX}${sessionId}`;
 
-  const proc = Bun.spawn(
-    ["docker", "cp", localPath, `${containerName}:${containerPath}`],
-    { stdout: "pipe", stderr: "pipe" }
-  );
+  const proc = Bun.spawn(["docker", "cp", localPath, `${containerName}:${containerPath}`], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
 
   const exitCode = await proc.exited;
   if (exitCode !== 0) {

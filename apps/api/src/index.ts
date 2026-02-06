@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import { sessionsRouter } from "./routes/sessions.js";
 import { messagesRouter } from "./routes/messages.js";
+import { sessionsRouter } from "./routes/sessions.js";
 import { streamRouter } from "./routes/stream.js";
 
 // Run migrations on startup

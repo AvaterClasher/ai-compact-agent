@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
 import { Send } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
 
 interface InputBarProps {
   onSend: (content: string) => void;
@@ -55,6 +55,7 @@ export function InputBar({ onSend, disabled }: InputBarProps) {
           className="flex-1 resize-none bg-muted rounded-lg px-4 py-3 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
         />
         <button
+          type="button"
           onClick={handleSubmit}
           disabled={disabled || !value.trim()}
           className="p-3 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"

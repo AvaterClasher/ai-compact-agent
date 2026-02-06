@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
 import type { Message, TokenUsage } from "@repo/shared";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 
 export function useChat(sessionId: string) {
@@ -117,7 +117,7 @@ export function useChat(sessionId: string) {
         setIsStreaming(false);
       }
     },
-    [sessionId, isStreaming]
+    [sessionId, isStreaming],
   );
 
   return { messages, isStreaming, tokenUsage, sendMessage };

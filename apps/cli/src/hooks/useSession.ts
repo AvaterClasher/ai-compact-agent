@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
 import type { Session, TokenUsage } from "@repo/shared";
 import { AgentAPIClient } from "@repo/shared/api-client";
+import { useCallback, useEffect, useState } from "react";
 
 const api = new AgentAPIClient();
 
@@ -24,7 +24,7 @@ export function useSession() {
       const found = sessions.find((s) => s.id === id);
       if (found) setSession(found);
     },
-    [sessions]
+    [sessions],
   );
 
   const createSession = useCallback(async () => {

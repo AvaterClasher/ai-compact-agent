@@ -1,7 +1,7 @@
 "use client";
 
 import type { Message } from "@repo/shared";
-import { User, Bot, Info } from "lucide-react";
+import { Bot, Info, User } from "lucide-react";
 
 interface MessageBubbleProps {
   message: Message;
@@ -12,9 +12,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const isSystem = message.role === "system";
 
   return (
-    <div
-      className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}
-    >
+    <div className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}>
       {!isUser && (
         <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
           {isSystem ? (
@@ -34,9 +32,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
               : "bg-muted text-foreground"
         }`}
       >
-        {message.content || (
-          <span className="text-muted-foreground italic">Empty message</span>
-        )}
+        {message.content || <span className="text-muted-foreground italic">Empty message</span>}
       </div>
 
       {isUser && (

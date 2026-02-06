@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import type { Message } from "@repo/shared";
+import { useEffect, useRef } from "react";
 import { MessageBubble } from "./MessageBubble";
 
 interface MessageListProps {
@@ -14,7 +14,7 @@ export function MessageList({ messages, isStreaming }: MessageListProps) {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, []);
 
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">

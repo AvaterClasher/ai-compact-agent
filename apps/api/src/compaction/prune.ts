@@ -1,8 +1,7 @@
-import { eq, and, desc } from "drizzle-orm";
-import { messageParts, messages } from "@repo/shared";
-import { PRUNE_MINIMUM, PRUNE_PROTECT } from "@repo/shared";
-import { estimateTokens } from "./token.js";
+import { messageParts, messages, PRUNE_MINIMUM, PRUNE_PROTECT } from "@repo/shared";
+import { and, desc, eq } from "drizzle-orm";
 import type { DB } from "../db/client.js";
+import { estimateTokens } from "./token.js";
 
 /**
  * Prune old tool outputs from a session's message parts.
@@ -42,11 +41,7 @@ export async function prune(db: DB, sessionId: string): Promise<number> {
   const allParts = await db
     .select()
     .from(messageParts)
-    .where(
-      and(
-        eq(messageParts.pruned, false),
-      )
-    )
+    .where(and(eq(messageParts.pruned, false)))
     .orderBy(desc(messageParts.createdAt));
 
   // Filter to parts belonging to this session's messages and not protected
@@ -55,7 +50,7 @@ export async function prune(db: DB, sessionId: string): Promise<number> {
     (p) =>
       sessionMessageIds.has(p.messageId) &&
       !protectedMessageIds.has(p.messageId) &&
-      (p.type === "tool-result" || p.type === "tool-call")
+      (p.type === "tool-result" || p.type === "tool-call"),
   );
 
   // Calculate total tokens and determine what to prune

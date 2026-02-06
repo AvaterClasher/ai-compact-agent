@@ -1,13 +1,13 @@
-import { streamText, stepCountIs } from "ai";
 import { anthropic } from "@ai-sdk/anthropic";
+import type { TokenUsage } from "@repo/shared";
+import { MAX_STEPS, messageParts, messages } from "@repo/shared";
+import { stepCountIs, streamText } from "ai";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { messages, messageParts, MAX_STEPS } from "@repo/shared";
-import type { TokenUsage } from "@repo/shared";
+import { estimateTokens, isOverflow, processCompaction, prune } from "../compaction/index.js";
 import { db } from "../db/client.js";
-import { agentTools } from "./tools/index.js";
 import { SYSTEM_PROMPT } from "./prompts.js";
-import { prune, isOverflow, processCompaction, estimateTokens } from "../compaction/index.js";
+import { agentTools } from "./tools/index.js";
 
 interface StreamCallbacks {
   onToken: (delta: string) => void;
@@ -19,7 +19,7 @@ interface StreamCallbacks {
 export async function runAgentLoop(
   sessionId: string,
   userContent: string,
-  callbacks: StreamCallbacks
+  callbacks: StreamCallbacks,
 ) {
   // 1. Run prune before processing
   const prunedTokens = await prune(db, sessionId);

@@ -13,16 +13,17 @@ export const executeCodeTool = tool({
   execute: async ({ code, language }) => {
     try {
       let cmd: string[];
-      let input: string | undefined;
+      let _input: string | undefined;
 
       switch (language) {
         case "javascript":
-        case "typescript":
+        case "typescript": {
           // Write to temp file and execute with bun
           const tsPath = `/tmp/exec_${Date.now()}.ts`;
           await Bun.write(tsPath, code);
           cmd = ["bun", "run", tsPath];
           break;
+        }
         case "python":
           cmd = ["python3", "-c", code];
           break;

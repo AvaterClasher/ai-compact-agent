@@ -1,6 +1,6 @@
+import { messageParts, messages } from "@repo/shared";
+import { asc, eq } from "drizzle-orm";
 import { Hono } from "hono";
-import { eq, asc } from "drizzle-orm";
-import { messages, messageParts } from "@repo/shared";
 import { db } from "../db/client.js";
 
 export const messagesRouter = new Hono();
@@ -25,7 +25,7 @@ messagesRouter.get("/:sessionId", async (c) => {
         .orderBy(asc(messageParts.createdAt));
 
       return { ...msg, parts };
-    })
+    }),
   );
 
   return c.json(messagesWithParts);

@@ -1,17 +1,14 @@
+import { createSessionSchema, DEFAULT_MODEL, sessions, updateSessionSchema } from "@repo/shared";
+import { desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
-import { eq, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { sessions, createSessionSchema, updateSessionSchema, DEFAULT_MODEL } from "@repo/shared";
 import { db } from "../db/client.js";
 
 export const sessionsRouter = new Hono();
 
 // GET /api/sessions - List all sessions
 sessionsRouter.get("/", async (c) => {
-  const result = await db
-    .select()
-    .from(sessions)
-    .orderBy(desc(sessions.updatedAt));
+  const result = await db.select().from(sessions).orderBy(desc(sessions.updatedAt));
 
   return c.json(result);
 });
@@ -37,10 +34,7 @@ sessionsRouter.post("/", async (c) => {
     updatedAt: now,
   });
 
-  const [session] = await db
-    .select()
-    .from(sessions)
-    .where(eq(sessions.id, id));
+  const [session] = await db.select().from(sessions).where(eq(sessions.id, id));
 
   return c.json(session, 201);
 });
@@ -48,10 +42,7 @@ sessionsRouter.post("/", async (c) => {
 // GET /api/sessions/:id - Get session details
 sessionsRouter.get("/:id", async (c) => {
   const id = c.req.param("id");
-  const [session] = await db
-    .select()
-    .from(sessions)
-    .where(eq(sessions.id, id));
+  const [session] = await db.select().from(sessions).where(eq(sessions.id, id));
 
   if (!session) {
     return c.json({ error: "Session not found" }, 404);
@@ -70,10 +61,7 @@ sessionsRouter.patch("/:id", async (c) => {
     return c.json({ error: parsed.error.flatten() }, 400);
   }
 
-  const [existing] = await db
-    .select()
-    .from(sessions)
-    .where(eq(sessions.id, id));
+  const [existing] = await db.select().from(sessions).where(eq(sessions.id, id));
 
   if (!existing) {
     return c.json({ error: "Session not found" }, 404);
@@ -84,10 +72,7 @@ sessionsRouter.patch("/:id", async (c) => {
     .set({ ...parsed.data, updatedAt: new Date() })
     .where(eq(sessions.id, id));
 
-  const [updated] = await db
-    .select()
-    .from(sessions)
-    .where(eq(sessions.id, id));
+  const [updated] = await db.select().from(sessions).where(eq(sessions.id, id));
 
   return c.json(updated);
 });
@@ -96,10 +81,7 @@ sessionsRouter.patch("/:id", async (c) => {
 sessionsRouter.delete("/:id", async (c) => {
   const id = c.req.param("id");
 
-  const [existing] = await db
-    .select()
-    .from(sessions)
-    .where(eq(sessions.id, id));
+  const [existing] = await db.select().from(sessions).where(eq(sessions.id, id));
 
   if (!existing) {
     return c.json({ error: "Session not found" }, 404);

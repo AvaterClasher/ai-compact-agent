@@ -17,9 +17,7 @@ export function StatusBar({ usage, sessionTitle }: StatusBarProps) {
       paddingLeft={1}
       paddingRight={1}
     >
-      <text fg="#a1a1aa">
-        {sessionTitle || "No session"} | Ctrl+N: New | ESC: Back/Quit
-      </text>
+      <text fg="#a1a1aa">{sessionTitle || "No session"} | Ctrl+N: New | ESC: Back/Quit</text>
       {totalTokens > 0 && (
         <text fg="#a1a1aa">
           Tokens: {usage.input.toLocaleString()} in / {usage.output.toLocaleString()} out
