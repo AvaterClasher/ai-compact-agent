@@ -1,7 +1,8 @@
-import { createSessionSchema, DEFAULT_MODEL, sessions, updateSessionSchema } from "@repo/shared";
+import { createSessionSchema, sessions, updateSessionSchema } from "@repo/shared";
 import { desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { nanoid } from "nanoid";
+import { getAvailableModels, getDefaultModel } from "../agent/model.js";
 import { generateSessionTitle } from "../agent/title.js";
 import { db } from "../db/client.js";
 
@@ -29,7 +30,7 @@ sessionsRouter.post("/", async (c) => {
   await db.insert(sessions).values({
     id,
     title: parsed.data.title || "New Session",
-    model: parsed.data.model || DEFAULT_MODEL,
+    model: parsed.data.model || getDefaultModel(),
     status: "active",
     createdAt: now,
     updatedAt: now,

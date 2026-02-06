@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { getAvailableModels, getDefaultModel } from "./agent/model.js";
 import { messagesRouter } from "./routes/messages.js";
 import { sessionsRouter } from "./routes/sessions.js";
 import { streamRouter } from "./routes/stream.js";
@@ -20,6 +21,11 @@ app.route("/api/stream", streamRouter);
 
 // Health check
 app.get("/api/health", (c) => c.json({ status: "ok" }));
+
+// Available models (filtered by configured API keys)
+app.get("/api/models", (c) => {
+  return c.json({ models: getAvailableModels(), default: getDefaultModel() });
+});
 
 const port = Number(process.env.PORT) || 5001;
 

@@ -4,12 +4,15 @@ import { eq } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { resolveModel } from "./model.js";
 
-const TITLE_MODEL = "claude-haiku-4-5-20251001";
+function getTitleModel(): string {
+  if (process.env.ANTHROPIC_API_KEY) return "claude-haiku-4-5-20251001";
+  return "gpt-4.1-nano";
+}
 
 export async function generateSessionTitle(sessionId: string, userMessage: string): Promise<void> {
   try {
     const { text } = await generateText({
-      model: resolveModel(TITLE_MODEL),
+      model: resolveModel(getTitleModel()),
       system:
         "Generate a very short title (3-7 words) for a coding chat session based on the user's first message. Return only the title text, no quotes or punctuation at the end.",
       prompt: userMessage,

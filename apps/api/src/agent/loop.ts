@@ -1,20 +1,20 @@
 import type { TokenUsage } from "@repo/shared";
-import { DEFAULT_MODEL, MAX_STEPS, messageParts, messages } from "@repo/shared";
+import { MAX_STEPS, messageParts, messages } from "@repo/shared";
 import { streamText } from "ai";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { estimateTokens, isOverflow, processCompaction, prune } from "../compaction/index.js";
 import { db } from "../db/client.js";
-import { resolveModel } from "./model.js";
+import { getDefaultModel, resolveModel } from "./model.js";
 import { SYSTEM_PROMPT } from "./prompts.js";
 import { agentTools } from "./tools/index.js";
 
 interface StreamCallbacks {
-  onToken: (delta: string) => void;
-  onStepFinish: (usage: TokenUsage, toolResults?: unknown[]) => void;
-  onCompaction: () => void;
-  onDone: (messageId: string, usage: TokenUsage) => void;
-  onError: (error: Error) => void;
+  onToken: (delta: string) => void | Promise<void>;
+  onStepFinish: (usage: TokenUsage, toolResults?: unknown[]) => void | Promise<void>;
+  onCompaction: () => void | Promise<void>;
+  onDone: (messageId: string, usage: TokenUsage) => void | Promise<void>;
+  onError: (error: Error) => void | Promise<void>;
 }
 
 type AssistantContentPart =
@@ -50,7 +50,7 @@ export async function runAgentLoop(
   sessionId: string,
   userContent: string,
   callbacks: StreamCallbacks,
-  model = DEFAULT_MODEL,
+  model = getDefaultModel(),
 ) {
   // 1. Run prune before processing
   const prunedTokens = await prune(db, sessionId);
@@ -185,7 +185,7 @@ export async function runAgentLoop(
       totalUsage.reasoning += stepUsage.reasoning;
 
       // Notify client of step usage
-      callbacks.onStepFinish(
+      await callbacks.onStepFinish(
         totalUsage,
         stepToolResults.map((tr) => tr.result),
       );
@@ -249,7 +249,7 @@ export async function runAgentLoop(
       if (isOverflow(totalUsage)) {
         console.log(`Mid-turn overflow at step ${step + 1}, compacting session ${sessionId}...`);
         await processCompaction(db, sessionId, model);
-        callbacks.onCompaction();
+        await callbacks.onCompaction();
 
         // Reload conversation from DB (now just the summary)
         conversationMessages = await loadConversation(sessionId);
@@ -280,8 +280,8 @@ export async function runAgentLoop(
       });
     }
 
-    callbacks.onDone(assistantMessageId, totalUsage);
+    await callbacks.onDone(assistantMessageId, totalUsage);
   } catch (error) {
-    callbacks.onError(error as Error);
+    await callbacks.onError(error as Error);
   }
 }

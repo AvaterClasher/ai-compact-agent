@@ -1,9 +1,9 @@
 import type { TokenUsage } from "@repo/shared";
-import { compactions, DEFAULT_MODEL, messages, OUTPUT_TOKEN_MAX, sessions } from "@repo/shared";
+import { compactions, messages, OUTPUT_TOKEN_MAX, sessions } from "@repo/shared";
 import { generateText } from "ai";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { resolveModel } from "../agent/model.js";
+import { getDefaultModel, resolveModel } from "../agent/model.js";
 import type { DB } from "../db/client.js";
 import { estimateTokens } from "./token.js";
 
@@ -27,7 +27,7 @@ export function isOverflow(usage: TokenUsage, contextWindow = 200_000): boolean 
 export async function processCompaction(
   db: DB,
   sessionId: string,
-  model = DEFAULT_MODEL,
+  model = getDefaultModel(),
 ): Promise<void> {
   // Mark session as compacting
   await db
