@@ -1,6 +1,7 @@
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 import type { Metadata } from "next";
+import { SidebarShell } from "@/components/SidebarShell";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +16,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="theme-color" content="#0a0a0a" />
       </head>
       <body className="min-h-screen antialiased">
-        <div className="flex h-screen overflow-hidden">{children}</div>
+        <div className="flex h-screen overflow-hidden">
+          <SidebarShell>{children}</SidebarShell>
+        </div>
       </body>
     </html>
   );
