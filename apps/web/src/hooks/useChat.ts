@@ -233,6 +233,33 @@ export function useChat(sessionId: string, onFirstMessage?: () => void) {
               setTokenUsage(event.data.usage);
               break;
 
+            case "compaction": {
+              // Reload messages from API after compaction replaces history
+              const refreshed = await api.getMessages(sessionId);
+              setMessages(refreshed);
+              // Reset streaming refs for continued streaming post-compaction
+              streamingContentRef.current = "";
+              reasoningRef.current = "";
+              toolCallsRef.current = new Map();
+              setStreamingMeta({ reasoningIsStreaming: false });
+              // Re-add assistant placeholder for continued streaming
+              const placeholder: Message = {
+                id: `temp-assistant-${Date.now()}`,
+                sessionId,
+                role: "assistant",
+                content: "",
+                tokensInput: 0,
+                tokensOutput: 0,
+                tokensReasoning: 0,
+                tokensCacheRead: 0,
+                tokensCacheWrite: 0,
+                cost: 0,
+                createdAt: Date.now(),
+              };
+              setMessages((prev) => [...prev, placeholder]);
+              break;
+            }
+
             case "done":
               setTokenUsage(event.data.usage);
               setStreamingMeta({ reasoningIsStreaming: false });
