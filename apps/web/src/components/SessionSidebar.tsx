@@ -3,7 +3,7 @@
 import type { Session } from "@repo/shared";
 import { MessageSquare, Pencil, Plus, Terminal, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { EndpointStatus } from "@/hooks/useEndpoint";
+import type { EndpointStatus, SandboxStatus } from "@/hooks/useEndpoint";
 import { AgentSelector } from "./sidebar/AgentSelector";
 import { EndpointConfig } from "./sidebar/EndpointConfig";
 import { SidebarSection } from "./sidebar/SidebarSection";
@@ -17,6 +17,7 @@ interface SessionSidebarProps {
   onRenameSession: (id: string, title: string) => void;
   endpointUrl: string;
   endpointStatus: EndpointStatus;
+  sandboxStatus: SandboxStatus;
   onEndpointChange: (url: string) => void;
   onEndpointRefresh: () => void;
   selectedModel: string;
@@ -33,6 +34,7 @@ export function SessionSidebar({
   onRenameSession,
   endpointUrl,
   endpointStatus,
+  sandboxStatus,
   onEndpointChange,
   onEndpointRefresh,
   selectedModel,
@@ -89,6 +91,7 @@ export function SessionSidebar({
         <EndpointConfig
           url={endpointUrl}
           status={endpointStatus}
+          sandboxStatus={sandboxStatus}
           onUrlChange={onEndpointChange}
           onRefresh={onEndpointRefresh}
         />

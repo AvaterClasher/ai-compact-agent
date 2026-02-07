@@ -13,7 +13,7 @@ export function SidebarShell({ children }: { children: React.ReactNode }) {
   const sessionId = pathname.startsWith("/chat/") ? pathname.split("/")[2] : null;
 
   const { sessions, createSession, deleteSession, updateSession, refreshSession } = useSessions();
-  const { url, status, setUrl, refresh } = useEndpoint();
+  const { url, status, sandboxStatus, setUrl, refresh } = useEndpoint();
   const { model, setModel, availableModels } = useModelSelector(sessionId ?? null);
 
   const handleNewSession = async () => {
@@ -50,6 +50,7 @@ export function SidebarShell({ children }: { children: React.ReactNode }) {
         onRenameSession={(id, title) => updateSession(id, { title })}
         endpointUrl={url}
         endpointStatus={status}
+        sandboxStatus={sandboxStatus}
         onEndpointChange={setUrl}
         onEndpointRefresh={refresh}
         selectedModel={model}

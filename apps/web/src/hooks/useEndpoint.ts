@@ -4,16 +4,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { setApiEndpoint } from "@/lib/api";
 
 export type EndpointStatus = "connected" | "disconnected" | "checking";
+export type SandboxStatus = "ready" | "building" | "error" | "not_checked" | null;
 
 interface EndpointState {
   url: string;
   status: EndpointStatus;
+  sandboxStatus: SandboxStatus;
 }
 
 export function useEndpoint() {
   const [state, setState] = useState<EndpointState>({
     url: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001",
     status: "checking",
+    sandboxStatus: null,
   });
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
@@ -21,16 +24,22 @@ export function useEndpoint() {
     setState((prev) => ({ ...prev, status: "checking" }));
     try {
       const res = await fetch(`${url}/api/health`, { signal: AbortSignal.timeout(5000) });
-      setState({ url, status: res.ok ? "connected" : "disconnected" });
+      if (res.ok) {
+        const data = await res.json();
+        const sandbox = data.sandbox?.status ?? null;
+        setState({ url, status: "connected", sandboxStatus: sandbox });
+      } else {
+        setState({ url, status: "disconnected", sandboxStatus: null });
+      }
     } catch {
-      setState((prev) => ({ ...prev, status: "disconnected" }));
+      setState((prev) => ({ ...prev, status: "disconnected", sandboxStatus: null }));
     }
   }, []);
 
   const setUrl = useCallback(
     (url: string) => {
       setApiEndpoint(url);
-      setState({ url, status: "checking" });
+      setState({ url, status: "checking", sandboxStatus: null });
       checkHealth(url);
     },
     [checkHealth],
@@ -46,5 +55,11 @@ export function useEndpoint() {
     return () => clearInterval(intervalRef.current);
   }, [state.url, checkHealth]);
 
-  return { url: state.url, status: state.status, setUrl, refresh };
+  return {
+    url: state.url,
+    status: state.status,
+    sandboxStatus: state.sandboxStatus,
+    setUrl,
+    refresh,
+  };
 }
