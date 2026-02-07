@@ -66,11 +66,6 @@ export function InputBar({ onSend, disabled, usage, model }: InputBarProps) {
           />
           <PromptInputFooter>
             <div className="flex items-center gap-2">
-              {disabled && (
-                <Shimmer as="span" className="font-mono text-[10px] tracking-wide">
-                  streaming...
-                </Shimmer>
-              )}
               <Context
                 usedTokens={usedTokens}
                 maxTokens={maxTokens}
@@ -91,6 +86,11 @@ export function InputBar({ onSend, disabled, usage, model }: InputBarProps) {
                   <ContextContentFooter />
                 </ContextContent>
               </Context>
+              {disabled && (
+                <Shimmer as="span" className="font-mono text-[10px] tracking-wide">
+                  streaming...
+                </Shimmer>
+              )}
             </div>
             <PromptInputSubmit disabled={disabled} />
           </PromptInputFooter>

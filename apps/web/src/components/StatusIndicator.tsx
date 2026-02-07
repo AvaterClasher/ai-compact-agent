@@ -46,19 +46,6 @@ export function StatusIndicator({ usage, isStreaming, model }: StatusIndicatorPr
 
   return (
     <div className="flex items-center justify-between px-4 py-1.5 border-b border-border font-mono text-[11px] text-muted-foreground">
-      <div className="flex items-center gap-2">
-        {isStreaming ? (
-          <Shimmer as="span" className="text-xs font-medium tracking-wide">
-            STREAMING
-          </Shimmer>
-        ) : (
-          <>
-            <Cpu className="w-3 h-3 text-dim" />
-            <span className="text-dim tracking-wide">IDLE</span>
-          </>
-        )}
-      </div>
-
       <Context usedTokens={usedTokens} maxTokens={CONTEXT_WINDOW} usage={aiUsage} modelId={model}>
         <ContextTrigger />
         <ContextContent>
@@ -74,6 +61,19 @@ export function StatusIndicator({ usage, isStreaming, model }: StatusIndicatorPr
           <ContextContentFooter />
         </ContextContent>
       </Context>
+
+      <div className="flex items-center gap-2">
+        {isStreaming ? (
+          <Shimmer as="span" className="text-xs font-medium tracking-wide">
+            STREAMING
+          </Shimmer>
+        ) : (
+          <>
+            <Cpu className="w-3 h-3 text-dim" />
+            <span className="text-dim tracking-wide">IDLE</span>
+          </>
+        )}
+      </div>
     </div>
   );
 }
