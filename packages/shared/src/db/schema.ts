@@ -39,7 +39,7 @@ export const messageParts = sqliteTable("message_parts", {
     .notNull()
     .references(() => messages.id, { onDelete: "cascade" }),
   type: text("type", {
-    enum: ["text", "tool-call", "tool-result", "compaction"],
+    enum: ["text", "tool-call", "tool-result", "reasoning", "compaction"],
   }).notNull(),
   toolName: text("tool_name"),
   toolCallId: text("tool_call_id"),

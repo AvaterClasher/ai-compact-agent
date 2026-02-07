@@ -1,5 +1,5 @@
 export type MessageRole = "user" | "assistant" | "system" | "tool";
-export type MessagePartType = "text" | "tool-call" | "tool-result" | "compaction";
+export type MessagePartType = "text" | "tool-call" | "tool-result" | "reasoning" | "compaction";
 
 export interface Message {
   id: string;
