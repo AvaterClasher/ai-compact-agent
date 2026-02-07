@@ -1,13 +1,16 @@
 "use client";
 
 import type { Message, TokenUsage } from "@repo/shared";
+import type { StreamingMeta } from "@/hooks/useChat";
 import { InputBar } from "./InputBar";
 import { MessageList } from "./MessageList";
 
 interface ChatWindowProps {
   messages: Message[];
   isStreaming: boolean;
+  isLoading: boolean;
   tokenUsage: TokenUsage;
+  streamingMeta: StreamingMeta;
   model: string;
   onSendMessage: (content: string) => void;
 }
@@ -15,13 +18,20 @@ interface ChatWindowProps {
 export function ChatWindow({
   messages,
   isStreaming,
+  isLoading,
   tokenUsage,
+  streamingMeta,
   model,
   onSendMessage,
 }: ChatWindowProps) {
   return (
     <main className="flex-1 flex flex-col bg-background relative">
-      <MessageList messages={messages} />
+      <MessageList
+        messages={messages}
+        isLoading={isLoading}
+        isStreaming={isStreaming}
+        streamingMeta={streamingMeta}
+      />
       <InputBar onSend={onSendMessage} disabled={isStreaming} usage={tokenUsage} model={model} />
     </main>
   );
