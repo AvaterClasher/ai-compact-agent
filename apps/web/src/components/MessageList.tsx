@@ -2,7 +2,6 @@
 
 import type { Message } from "@repo/shared";
 import { Loader2 } from "lucide-react";
-import { Checkpoint, CheckpointIcon, CheckpointTrigger } from "@/components/ai-elements/checkpoint";
 import {
   Conversation,
   ConversationContent,
@@ -39,9 +38,6 @@ export function MessageList({ messages, isLoading, isStreaming, streamingMeta }:
             const isLastAssistant = i === lastAssistantIndex;
             const isAssistant = msg.role === "assistant";
 
-            // Show checkpoint after completed assistant messages (not the streaming one)
-            const showCheckpoint = isAssistant && !isLastAssistant && i < messages.length - 1;
-
             return (
               <div key={msg.id}>
                 <ChatMessage
@@ -49,12 +45,6 @@ export function MessageList({ messages, isLoading, isStreaming, streamingMeta }:
                   isStreaming={isLastAssistant && isStreaming ? true : undefined}
                   streamingMeta={isLastAssistant && isStreaming ? streamingMeta : undefined}
                 />
-                {showCheckpoint && (
-                  <Checkpoint>
-                    <CheckpointIcon />
-                    <CheckpointTrigger />
-                  </Checkpoint>
-                )}
               </div>
             );
           })
