@@ -2,6 +2,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { openai } from "@ai-sdk/openai";
 import { AVAILABLE_MODELS } from "@repo/shared";
 import type { LanguageModel } from "ai";
+import { wrapAISDKModel } from "axiom/ai";
 
 export function isOpenAIModel(model: string): boolean {
   return model.startsWith("gpt-") || /^o\d/.test(model);
@@ -9,15 +10,16 @@ export function isOpenAIModel(model: string): boolean {
 
 /**
  * Resolve a model string to the appropriate AI SDK provider instance.
+ * Wrapped with Axiom tracing for automatic prompt/completion/token observability.
  *
  * - Strings starting with "gpt-" or "o" (o1, o3, o4-mini, etc.) → OpenAI
  * - Everything else → Anthropic (default)
  */
 export function resolveModel(model: string): LanguageModel {
   if (isOpenAIModel(model)) {
-    return openai(model);
+    return wrapAISDKModel(openai(model));
   }
-  return anthropic(model);
+  return wrapAISDKModel(anthropic(model));
 }
 
 /** Return the default model based on which API keys are configured. */
