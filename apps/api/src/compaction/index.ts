@@ -1,7 +1,15 @@
 import type { TokenUsage } from "@repo/shared";
-import { compactions, messages, OUTPUT_TOKEN_MAX, sessions } from "@repo/shared";
+import {
+  compactions,
+  DEFAULT_CONTEXT_WINDOW,
+  MODEL_CONTEXT_WINDOWS,
+  messageParts,
+  messages,
+  OUTPUT_TOKEN_MAX,
+  sessions,
+} from "@repo/shared";
 import { generateText } from "ai";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { getDefaultModel, resolveModel } from "../agent/model.js";
 import type { DB } from "../db/client.js";
@@ -14,9 +22,10 @@ export { estimateTokens } from "./token.js";
  * Check if the context is overflowing and compaction is needed.
  * Formula: input + cacheRead + output > contextWindow - OUTPUT_TOKEN_MAX
  *
- * Claude's context window is 200k tokens.
+ * Uses per-model context windows from MODEL_CONTEXT_WINDOWS.
  */
-export function isOverflow(usage: TokenUsage, contextWindow = 200_000): boolean {
+export function isOverflow(usage: TokenUsage, model?: string): boolean {
+  const contextWindow = (model && MODEL_CONTEXT_WINDOWS[model]) || DEFAULT_CONTEXT_WINDOW;
   const totalUsed = usage.input + usage.cacheRead + usage.output;
   return totalUsed > contextWindow - OUTPUT_TOKEN_MAX;
 }
@@ -51,12 +60,48 @@ export async function processCompaction(
       return;
     }
 
-    // Estimate tokens before compaction
-    const tokensBefore = sessionMessages.reduce((sum, msg) => sum + estimateTokens(msg.content), 0);
+    // Fetch all message parts for tool context
+    const messageIds = sessionMessages.map((m) => m.id);
+    const allParts =
+      messageIds.length > 0
+        ? await db.select().from(messageParts).where(inArray(messageParts.messageId, messageIds))
+        : [];
 
-    // Build conversation text for summarization
+    // Group parts by messageId
+    const partsByMessage = new Map<string, (typeof allParts)[number][]>();
+    for (const part of allParts) {
+      const existing = partsByMessage.get(part.messageId) ?? [];
+      existing.push(part);
+      partsByMessage.set(part.messageId, existing);
+    }
+
+    // Estimate tokens before compaction (messages + parts)
+    const messageTokens = sessionMessages.reduce(
+      (sum, msg) => sum + estimateTokens(msg.content),
+      0,
+    );
+    const partTokens = allParts.reduce(
+      (sum, p) => sum + (p.tokenEstimate || estimateTokens(p.content)),
+      0,
+    );
+    const tokensBefore = messageTokens + partTokens;
+
+    // Build conversation text for summarization (including tool context)
     const conversationText = sessionMessages
-      .map((msg) => `[${msg.role}]: ${msg.content}`)
+      .map((msg) => {
+        const parts = partsByMessage.get(msg.id) ?? [];
+        const toolParts = parts.filter((p) => p.type === "tool-call" || p.type === "tool-result");
+
+        let text = `[${msg.role}]: ${msg.content}`;
+        for (const part of toolParts) {
+          if (part.type === "tool-call") {
+            text += `\n[Tool Call: ${part.toolName}] ${part.content}`;
+          } else if (part.type === "tool-result") {
+            text += `\n[Tool Result: ${part.toolName}] ${part.content}`;
+          }
+        }
+        return text;
+      })
       .join("\n\n");
 
     // Generate summary
@@ -88,10 +133,8 @@ Be thorough but concise. This summary will replace the full conversation history
       createdAt: new Date(),
     });
 
-    // Delete old messages
-    for (const msg of sessionMessages) {
-      await db.delete(messages).where(eq(messages.id, msg.id));
-    }
+    // Delete old messages (ON DELETE CASCADE handles messageParts cleanup)
+    await db.delete(messages).where(eq(messages.sessionId, sessionId));
 
     // Insert summary as a system message
     await db.insert(messages).values({
