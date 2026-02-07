@@ -68,3 +68,43 @@ export function buildToolCallResponse(
     ...buildTextResponse(finalText),
   ];
 }
+
+/**
+ * Build a tool-call-only response (no follow-up text).
+ * Useful for simulating multi-step loops where the agent continues after tool results.
+ */
+export function buildToolCallOnlyResponse(
+  toolName: string,
+  input: Record<string, unknown>,
+  output: unknown,
+  usage: Partial<TokenUsage> = {},
+) {
+  return [
+    {
+      type: "tool-call",
+      toolName,
+      toolCallId: `test_call_${toolName}`,
+      input,
+    },
+    {
+      type: "tool-result",
+      toolName,
+      toolCallId: `test_call_${toolName}`,
+      output,
+    },
+    {
+      type: "finish",
+      totalUsage: {
+        inputTokens: usage.input ?? 100,
+        outputTokens: usage.output ?? 50,
+        inputTokenDetails: {
+          cacheReadTokens: usage.cacheRead ?? 0,
+          cacheWriteTokens: usage.cacheWrite ?? 0,
+        },
+        outputTokenDetails: {
+          reasoningTokens: usage.reasoning ?? 0,
+        },
+      },
+    },
+  ];
+}
