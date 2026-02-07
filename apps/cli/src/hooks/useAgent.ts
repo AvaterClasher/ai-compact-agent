@@ -88,6 +88,29 @@ export function useAgent(sessionId: string, onFirstMessage?: () => void) {
               setTokenUsage(event.data.usage);
               break;
 
+            case "compaction": {
+              // Reload messages from API after compaction
+              const refreshed = await api.getMessages(sessionId);
+              setMessages(refreshed);
+              // Reset streaming state for continued streaming post-compaction
+              streamContent = "";
+              const postCompactPlaceholder: Message = {
+                id: `temp-assistant-${Date.now()}`,
+                sessionId,
+                role: "assistant",
+                content: "",
+                tokensInput: 0,
+                tokensOutput: 0,
+                tokensReasoning: 0,
+                tokensCacheRead: 0,
+                tokensCacheWrite: 0,
+                cost: 0,
+                createdAt: Date.now(),
+              };
+              setMessages((prev) => [...prev, postCompactPlaceholder]);
+              break;
+            }
+
             case "done":
               setTokenUsage(event.data.usage);
               if (isFirstMessage) {
