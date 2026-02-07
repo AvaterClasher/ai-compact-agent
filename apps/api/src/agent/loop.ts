@@ -1,7 +1,14 @@
 import type { TokenUsage } from "@repo/shared";
-import { MAX_STEPS, messageParts, messages } from "@repo/shared";
+import {
+  DEFAULT_CONTEXT_WINDOW,
+  MAX_STEPS,
+  MODEL_CONTEXT_WINDOWS,
+  messageParts,
+  messages,
+  OUTPUT_TOKEN_MAX,
+} from "@repo/shared";
 import { streamText } from "ai";
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { estimateTokens, isOverflow, processCompaction, prune } from "../compaction/index.js";
 import { db } from "../db/client.js";
@@ -48,10 +55,59 @@ async function loadConversation(sessionId: string): Promise<ConversationMessage[
     .where(eq(messages.sessionId, sessionId))
     .orderBy(messages.createdAt);
 
-  return dbMessages.map((msg) => ({
-    role: msg.role as "user" | "assistant" | "system",
-    content: msg.content,
-  }));
+  const result: ConversationMessage[] = [];
+
+  for (const msg of dbMessages) {
+    if (msg.role === "user" || msg.role === "system") {
+      result.push({ role: msg.role, content: msg.content });
+      continue;
+    }
+
+    if (msg.role === "assistant") {
+      // Fetch message parts to reconstruct structured content
+      const parts = await db
+        .select()
+        .from(messageParts)
+        .where(and(eq(messageParts.messageId, msg.id)))
+        .orderBy(messageParts.createdAt);
+
+      const toolCallParts = parts.filter((p) => p.type === "tool-call");
+      const toolResultParts = parts.filter((p) => p.type === "tool-result");
+
+      if (toolCallParts.length > 0) {
+        // Build structured assistant content with text + tool calls
+        const textParts = parts.filter((p) => p.type === "text");
+        const assistantContent: AssistantContentPart[] = [
+          ...textParts.map((p) => ({ type: "text" as const, text: p.content })),
+          ...toolCallParts.map((p) => ({
+            type: "tool-call" as const,
+            toolCallId: p.toolCallId!,
+            toolName: p.toolName!,
+            input: JSON.parse(p.content),
+          })),
+        ];
+        result.push({ role: "assistant", content: assistantContent });
+
+        // Emit a following tool message with tool results
+        if (toolResultParts.length > 0) {
+          result.push({
+            role: "tool",
+            content: toolResultParts.map((p) => ({
+              type: "tool-result" as const,
+              toolCallId: p.toolCallId!,
+              toolName: p.toolName!,
+              output: JSON.parse(p.content),
+            })),
+          });
+        }
+      } else {
+        // Plain text assistant message
+        result.push({ role: "assistant", content: msg.content });
+      }
+    }
+  }
+
+  return result;
 }
 
 export async function runAgentLoop(
@@ -87,6 +143,47 @@ export async function runAgentLoop(
 
   // 3. Load initial conversation from DB
   let conversationMessages = await loadConversation(sessionId);
+
+  // 3b. Pre-send overflow check — compact before first streamText if already over limit
+  const contextWindow = MODEL_CONTEXT_WINDOWS[model] || DEFAULT_CONTEXT_WINDOW;
+  const lastAssistant = await db
+    .select()
+    .from(messages)
+    .where(and(eq(messages.sessionId, sessionId), eq(messages.role, "assistant")))
+    .orderBy(desc(messages.createdAt))
+    .limit(1)
+    .then((rows) => rows[0]);
+
+  if (lastAssistant?.tokensInput) {
+    // Primary: project from last assistant's stored input usage + new user tokens
+    const projectedInput = lastAssistant.tokensInput + estimateTokens(userContent);
+    const projectedUsage: TokenUsage = {
+      input: projectedInput,
+      output: lastAssistant.tokensOutput ?? 0,
+      reasoning: 0,
+      cacheRead: lastAssistant.tokensCacheRead ?? 0,
+      cacheWrite: 0,
+    };
+    if (isOverflow(projectedUsage, model)) {
+      console.log(`Pre-send overflow detected for session ${sessionId}, compacting...`);
+      await processCompaction(db, sessionId, model);
+      await callbacks.onCompaction();
+      conversationMessages = await loadConversation(sessionId);
+    }
+  } else if (conversationMessages.length > 0) {
+    // Fallback: estimate from all conversation message content
+    let estimatedTokenTotal = 0;
+    for (const msg of conversationMessages) {
+      const content = typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content);
+      estimatedTokenTotal += estimateTokens(content);
+    }
+    if (estimatedTokenTotal > contextWindow - OUTPUT_TOKEN_MAX) {
+      console.log(`Pre-send overflow (estimated) for session ${sessionId}, compacting...`);
+      await processCompaction(db, sessionId, model);
+      await callbacks.onCompaction();
+      conversationMessages = await loadConversation(sessionId);
+    }
+  }
 
   // 4. Manual step loop with mid-turn compaction
   let assistantMessageId = nanoid();
@@ -263,7 +360,7 @@ export async function runAgentLoop(
       }
 
       // Check for mid-turn overflow → compact before next step
-      if (isOverflow(totalUsage)) {
+      if (isOverflow(totalUsage, model)) {
         console.log(`Mid-turn overflow at step ${step + 1}, compacting session ${sessionId}...`);
         await processCompaction(db, sessionId, model);
         await callbacks.onCompaction();
