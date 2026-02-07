@@ -14,7 +14,7 @@ export async function generateSessionTitle(sessionId: string, userMessage: strin
     const { text } = await generateText({
       model: resolveModel(getTitleModel()),
       system:
-        "Generate a very short title (3-7 words) for a coding chat session based on the user's first message. Return only the title text, no quotes or punctuation at the end.",
+        "Generate a very short title (3-5 words) for a chat session based on the user's first message. Return only the title text, no quotes or punctuation at the end.",
       prompt: userMessage,
     });
 
