@@ -36,7 +36,6 @@ export function MessageList({ messages, isLoading, isStreaming, streamingMeta }:
         ) : (
           messages.map((msg, i) => {
             const isLastAssistant = i === lastAssistantIndex;
-            const isAssistant = msg.role === "assistant";
 
             return (
               <div key={msg.id}>
