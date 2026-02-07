@@ -11,6 +11,14 @@ import { agentTools } from "./tools/index.js";
 
 interface StreamCallbacks {
   onToken: (delta: string) => void | Promise<void>;
+  onToolCall: (toolCallId: string, toolName: string, input: unknown) => void | Promise<void>;
+  onToolResult: (
+    toolCallId: string,
+    toolName: string,
+    output: unknown,
+    isError?: boolean,
+  ) => void | Promise<void>;
+  onReasoningDelta: (delta: string) => void | Promise<void>;
   onStepFinish: (usage: TokenUsage, toolResults?: unknown[]) => void | Promise<void>;
   onCompaction: () => void | Promise<void>;
   onDone: (messageId: string, usage: TokenUsage) => void | Promise<void>;
@@ -141,6 +149,7 @@ export async function runAgentLoop(
               tokenEstimate: estimateTokens(inputStr),
               createdAt: new Date(),
             });
+            await callbacks.onToolCall(part.toolCallId, part.toolName, part.input);
             break;
           }
 
@@ -161,6 +170,14 @@ export async function runAgentLoop(
               tokenEstimate: estimateTokens(resultContent),
               createdAt: new Date(),
             });
+            await callbacks.onToolResult(part.toolCallId, part.toolName, part.output);
+            break;
+          }
+
+          case "reasoning-delta": {
+            if (part.text) {
+              await callbacks.onReasoningDelta(part.text);
+            }
             break;
           }
 

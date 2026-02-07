@@ -45,6 +45,30 @@ streamRouter.post("/:sessionId", async (c) => {
           });
         },
 
+        onToolCall: async (toolCallId, toolName, input) => {
+          await stream.writeSSE({
+            data: JSON.stringify({ toolCallId, toolName, input }),
+            event: "tool-call",
+            id: String(eventId++),
+          });
+        },
+
+        onToolResult: async (toolCallId, toolName, output, isError) => {
+          await stream.writeSSE({
+            data: JSON.stringify({ toolCallId, toolName, output, isError }),
+            event: "tool-result",
+            id: String(eventId++),
+          });
+        },
+
+        onReasoningDelta: async (delta) => {
+          await stream.writeSSE({
+            data: JSON.stringify({ delta }),
+            event: "reasoning-delta",
+            id: String(eventId++),
+          });
+        },
+
         onStepFinish: async (usage, toolResults) => {
           await stream.writeSSE({
             data: JSON.stringify({ usage, toolResults }),
