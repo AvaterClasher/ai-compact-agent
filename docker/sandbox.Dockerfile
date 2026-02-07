@@ -1,21 +1,14 @@
-FROM ubuntu:22.04
+FROM alpine:3.21
 
-RUN apt-get update && apt-get install -y \
-  curl \
-  git \
-  python3 \
-  python3-pip \
-  nodejs \
-  npm \
-  && rm -rf /var/lib/apt/lists/*
-
-# Install Bun
-RUN curl -fsSL https://bun.sh/install | bash
-ENV PATH="/root/.bun/bin:${PATH}"
-
-WORKDIR /workspace
+RUN apk add --no-cache curl bash
 
 # Non-root user for security
-RUN useradd -m -s /bin/bash sandbox
+RUN adduser -D -s /bin/bash sandbox
+
+# Install Bun as sandbox user
 USER sandbox
+ENV BUN_INSTALL="/home/sandbox/.bun"
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/home/sandbox/.bun/bin:${PATH}"
+
 WORKDIR /home/sandbox/workspace
