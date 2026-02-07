@@ -1,6 +1,6 @@
 "use client";
 
-import type { TokenUsage } from "@repo/shared";
+import { DEFAULT_CONTEXT_WINDOW, MODEL_CONTEXT_WINDOWS, type TokenUsage } from "@repo/shared";
 import { Cpu } from "lucide-react";
 import {
   Context,
@@ -22,9 +22,8 @@ interface StatusIndicatorProps {
   model: string;
 }
 
-const CONTEXT_WINDOW = 200_000;
-
 export function StatusIndicator({ usage, isStreaming, model }: StatusIndicatorProps) {
+  const CONTEXT_WINDOW = MODEL_CONTEXT_WINDOWS[model] || DEFAULT_CONTEXT_WINDOW;
   const usedTokens = usage.input + usage.output;
 
   const aiUsage = {
