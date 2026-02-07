@@ -27,7 +27,7 @@ export default function Home() {
           This is an open-source{" "}
           <span className="inline-flex items-center gap-1.5 align-middle border border-border rounded px-2 py-0.5 bg-secondary text-sm font-medium">
             <Terminal className="w-3.5 h-3.5 text-primary" />
-            Salvador
+            Exo
           </span>{" "}
           Agent UI, built with{" "}
           <span className="inline-flex items-center gap-1 align-middle border border-border rounded px-2 py-0.5 bg-secondary text-sm font-medium">
@@ -35,7 +35,7 @@ export default function Home() {
           </span>
         </p>
         <p className="text-muted-foreground text-sm mb-8">
-          For the full experience, connect to a running Salvador API.
+          For the full experience, connect to a running Exo API.
         </p>
 
         <div className="flex items-center justify-center gap-3">

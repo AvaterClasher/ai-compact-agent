@@ -71,25 +71,17 @@ export function SessionSidebar({
     <aside className="w-[260px] border-r border-border bg-card flex flex-col">
       {/* Header */}
       <div className="px-3 py-3 border-b border-border">
-        <div className="flex items-center gap-2 px-2 mb-3">
+        <div className="flex items-center gap-2 px-2">
           <div className="w-6 h-6 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center">
             <Terminal className="w-3 h-3 text-primary" />
           </div>
           <span className="font-mono text-xs font-semibold tracking-wide text-foreground uppercase">
-            Salvador
+            Exo
           </span>
           <span className="ml-auto font-mono text-[9px] text-dim tracking-wide bg-secondary px-1.5 py-0.5 rounded">
             v0.1
           </span>
         </div>
-        <button
-          type="button"
-          onClick={onNewSession}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md border border-border bg-transparent text-foreground font-mono text-[11px] font-medium tracking-wide uppercase hover:bg-secondary transition-colors duration-150 cursor-pointer focus-ring"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          New Chat
-        </button>
       </div>
 
       {/* Endpoint */}
@@ -115,6 +107,14 @@ export function SessionSidebar({
       <div className="flex-1 overflow-y-auto border-t border-border">
         <SidebarSection label="Sessions">
           <div className="px-0">
+            <button
+              type="button"
+              onClick={onNewSession}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 mb-2 rounded-md border border-border bg-transparent text-foreground font-mono text-[11px] font-medium tracking-wide uppercase hover:bg-secondary transition-colors duration-150 cursor-pointer focus-ring"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              New Chat
+            </button>
             {sessions.map((session, i) => {
               const isActive = session.id === activeSessionId;
               const isConfirmingDelete = confirmDeleteId === session.id;

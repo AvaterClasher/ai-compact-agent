@@ -2,7 +2,7 @@
  * Execute commands inside a Docker sandbox container.
  */
 
-const CONTAINER_PREFIX = "salvador-sandbox-";
+const CONTAINER_PREFIX = "exo-sandbox-";
 
 export async function execInContainer(
   sessionId: string,

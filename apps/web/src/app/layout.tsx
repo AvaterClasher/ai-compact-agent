@@ -5,7 +5,7 @@ import { SidebarShell } from "@/components/SidebarShell";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Salvador - Coding Agent",
+  title: "Exo",
   description: "Context-compacting coding agent",
 };
 

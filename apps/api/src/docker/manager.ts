@@ -3,8 +3,8 @@
  * Manages creation, cleanup, and health checks for sandbox containers.
  */
 
-const SANDBOX_IMAGE = "salvador-sandbox:latest";
-const CONTAINER_PREFIX = "salvador-sandbox-";
+const SANDBOX_IMAGE = "exo-sandbox:latest";
+const CONTAINER_PREFIX = "exo-sandbox-";
 
 export async function createContainer(sessionId: string): Promise<string> {
   const containerName = `${CONTAINER_PREFIX}${sessionId}`;

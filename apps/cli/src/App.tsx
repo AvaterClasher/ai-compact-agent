@@ -36,7 +36,7 @@ export function App() {
     <box flexDirection="column" width="100%" height="100%">
       <box border borderStyle="rounded" borderColor="#3b82f6" padding={1}>
         <text fg="#3b82f6">
-          <strong>Salvador</strong>
+          <strong>Exo</strong>
         </text>
         <text fg="#a1a1aa"> - Context-Compacting Agent</text>
       </box>
