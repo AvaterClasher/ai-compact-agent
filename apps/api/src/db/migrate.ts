@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { logger } from "../logger.js";
 import { db } from "./client.js";
 
 // Simple migration: create tables if they don't exist
@@ -52,8 +53,8 @@ const migrations = [
   sql`CREATE INDEX IF NOT EXISTS idx_compactions_session ON compactions(session_id)`,
 ];
 
-console.log("Running migrations...");
+logger.info("Running migrations...");
 for (const migration of migrations) {
   db.run(migration);
 }
-console.log("Migrations complete.");
+logger.info("Migrations complete.");

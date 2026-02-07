@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import { getDefaultModel } from "../agent/model.js";
 import { generateSessionTitle } from "../agent/title.js";
 import { db } from "../db/client.js";
+import { cleanupContainer } from "../docker/sandbox-pool.js";
 
 export const sessionsRouter = new Hono();
 
@@ -115,6 +116,9 @@ sessionsRouter.delete("/:id", async (c) => {
   }
 
   await db.delete(sessions).where(eq(sessions.id, id));
+
+  // Clean up Docker sandbox container if one exists
+  cleanupContainer(id).catch(() => {});
 
   return c.json({ success: true });
 });
