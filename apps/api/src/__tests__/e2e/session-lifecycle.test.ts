@@ -15,6 +15,17 @@ const dbProxy = new Proxy(
 
 mock.module("../../db/client.js", () => ({ db: dbProxy }));
 mock.module("../../db/migrate.js", () => ({}));
+mock.module("../../docker/manager.js", () => ({
+  ensureImage: async () => {},
+  getSandboxStatus: () => ({ status: "ready", error: null }),
+}));
+let cleanupContainerCalls: string[] = [];
+mock.module("../../docker/sandbox-pool.js", () => ({
+  cleanupContainer: async (sessionId: string) => {
+    cleanupContainerCalls.push(sessionId);
+  },
+  cleanupAllContainers: async () => {},
+}));
 
 // Mock agent loop to simulate realistic behavior: save messages to DB + stream events
 mock.module("../../agent/loop.js", () => ({
@@ -101,6 +112,7 @@ const app = {
 describe("E2E: session lifecycle", () => {
   beforeEach(() => {
     testDb = createTestDB();
+    cleanupContainerCalls = [];
   });
 
   test("create session -> send message -> stream response -> verify DB -> delete", async () => {
@@ -167,10 +179,27 @@ describe("E2E: session lifecycle", () => {
     expect(sessionGone.status).toBe(404);
   });
 
-  test("health check returns ok", async () => {
+  test("health check returns ok with sandbox status", async () => {
     const res = await app.request("/api/health");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as { status: string; sandbox: { status: string } };
     expect(body.status).toBe("ok");
+    expect(body.sandbox).toBeDefined();
+    expect(body.sandbox.status).toBeDefined();
+  });
+
+  test("delete session calls cleanupContainer with session ID", async () => {
+    // Create session
+    const createRes = await app.request("/api/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Cleanup Test" }),
+    });
+    const session = (await createRes.json()) as { id: string };
+
+    // Delete session
+    await app.request(`/api/sessions/${session.id}`, { method: "DELETE" });
+
+    expect(cleanupContainerCalls).toContain(session.id);
   });
 });

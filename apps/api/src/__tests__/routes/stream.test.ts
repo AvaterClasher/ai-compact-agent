@@ -14,6 +14,14 @@ const dbProxy = new Proxy(
 
 mock.module("../../db/client.js", () => ({ db: dbProxy }));
 mock.module("../../db/migrate.js", () => ({}));
+mock.module("../../docker/manager.js", () => ({
+  ensureImage: async () => {},
+  getSandboxStatus: () => ({ status: "ready", error: null }),
+}));
+mock.module("../../docker/sandbox-pool.js", () => ({
+  cleanupContainer: async () => {},
+  cleanupAllContainers: async () => {},
+}));
 
 // Mock the agent loop to avoid real AI SDK calls
 mock.module("../../agent/loop.js", () => ({
