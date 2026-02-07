@@ -26,5 +26,6 @@ export type SSEEvent =
     }
   | { type: "reasoning-delta"; data: { delta: string } }
   | { type: "step-finish"; data: { usage: TokenUsage; toolResults?: unknown[] } }
+  | { type: "compaction"; data: Record<string, never> }
   | { type: "done"; data: { messageId: string; usage: TokenUsage } }
   | { type: "error"; data: { message: string } };
