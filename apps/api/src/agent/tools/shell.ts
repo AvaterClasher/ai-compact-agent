@@ -1,13 +1,17 @@
 import { tool } from "ai";
 import { z } from "zod";
+import { execInContainer } from "../../docker/executor.js";
+import { ensureContainer } from "../../docker/sandbox-pool.js";
+
+const shellSchema = z.object({
+  command: z.string().describe("The shell command to execute"),
+  cwd: z.string().optional().describe("Working directory for the command"),
+});
 
 export const shellTool = tool({
   description:
     "Run a shell command and return its output. Use for system operations like ls, git, npm, etc.",
-  inputSchema: z.object({
-    command: z.string().describe("The shell command to execute"),
-    cwd: z.string().optional().describe("Working directory for the command"),
-  }),
+  inputSchema: shellSchema,
   execute: async ({ command, cwd }) => {
     try {
       const proc = Bun.spawn(["sh", "-c", command], {
@@ -33,3 +37,19 @@ export const shellTool = tool({
     }
   },
 });
+
+export function createDockerShellTool(sessionId: string) {
+  return tool({
+    description:
+      "Run a shell command and return its output. Use for system operations like ls, git, npm, etc.",
+    inputSchema: shellSchema,
+    execute: async ({ command, cwd }) => {
+      try {
+        await ensureContainer(sessionId);
+        return await execInContainer(sessionId, command, { cwd });
+      } catch (error) {
+        return { error: `Failed to execute command: ${(error as Error).message}` };
+      }
+    },
+  });
+}
