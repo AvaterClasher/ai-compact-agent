@@ -43,6 +43,7 @@ export function SidebarShell({ children }: { children: React.ReactNode }) {
     >
       <SessionSidebar
         sessions={sessions}
+        activeSessionId={sessionId}
         onNewSession={handleNewSession}
         onSelectSession={(id) => router.push(`/chat/${id}`)}
         onDeleteSession={handleDeleteSession}
