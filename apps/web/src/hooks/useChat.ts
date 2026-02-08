@@ -1,25 +1,17 @@
 "use client";
 
-import type { Message, MessagePart, TokenUsage } from "@repo/shared";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useChat as useAIChat } from "@ai-sdk/react";
+import type { TokenUsage } from "@repo/shared";
+import { dbMessagesToUIMessages } from "@repo/shared";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
-
-interface ToolCallEntry {
-  toolCallId: string;
-  toolName: string;
-  input: unknown;
-  output?: unknown;
-  isError?: boolean;
-}
+import { createSessionTransport } from "@/lib/chat-transport";
 
 export interface StreamingMeta {
   reasoningIsStreaming: boolean;
 }
 
 export function useChat(sessionId: string, onFirstMessage?: () => void) {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [tokenUsage, setTokenUsage] = useState<TokenUsage>({
     input: 0,
     output: 0,
@@ -27,103 +19,72 @@ export function useChat(sessionId: string, onFirstMessage?: () => void) {
     cacheRead: 0,
     cacheWrite: 0,
   });
-  const [streamingMeta, setStreamingMeta] = useState<StreamingMeta>({
-    reasoningIsStreaming: false,
+  const [isLoading, setIsLoading] = useState(true);
+  const messageCountRef = useRef(0);
+  const onFirstMessageRef = useRef(onFirstMessage);
+  onFirstMessageRef.current = onFirstMessage;
+
+  const transport = useMemo(() => createSessionTransport(sessionId), [sessionId]);
+
+  const {
+    messages,
+    sendMessage: aiSendMessage,
+    setMessages,
+    status,
+  } = useAIChat({
+    id: sessionId,
+    transport,
+    onData: (dataPart) => {
+      const part = dataPart as { type: string; data: unknown };
+      if (part.type === "data-token-usage") {
+        setTokenUsage(part.data as TokenUsage);
+      }
+      if (part.type === "data-done") {
+        const { usage, messageId: _messageId } = part.data as {
+          messageId: string;
+          usage: TokenUsage;
+        };
+        setTokenUsage(usage);
+        // Trigger title generation on first message
+        if (messageCountRef.current === 1) {
+          const firstUserMsg = messages.find((m) => m.role === "user");
+          const textPart = firstUserMsg?.parts.find((p) => p.type === "text") as
+            | { type: "text"; text: string }
+            | undefined;
+          if (textPart) {
+            api.generateTitle(sessionId, textPart.text).catch(console.error);
+          }
+          setTimeout(() => onFirstMessageRef.current?.(), 3000);
+        }
+      }
+    },
   });
 
-  const streamingContentRef = useRef("");
-  const reasoningRef = useRef("");
-  const toolCallsRef = useRef<Map<string, ToolCallEntry>>(new Map());
-  const messageCountRef = useRef(0);
+  const isStreaming = status === "streaming" || status === "submitted";
 
-  // Build parts array from streaming refs
-  const buildStreamingParts = useCallback((messageId: string): MessagePart[] => {
-    const parts: MessagePart[] = [];
+  // Derive reasoning streaming state from message parts
+  const streamingMeta = useMemo<StreamingMeta>(() => {
+    if (!isStreaming) return { reasoningIsStreaming: false };
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg?.role !== "assistant") return { reasoningIsStreaming: false };
+    const lastPart = lastMsg.parts[lastMsg.parts.length - 1];
+    return {
+      reasoningIsStreaming:
+        lastPart?.type === "reasoning" && (lastPart as { state?: string }).state === "streaming",
+    };
+  }, [isStreaming, messages]);
 
-    if (reasoningRef.current) {
-      parts.push({
-        id: "streaming-reasoning",
-        messageId,
-        type: "reasoning",
-        toolName: null,
-        toolCallId: null,
-        content: reasoningRef.current,
-        tokenEstimate: 0,
-        pruned: false,
-        createdAt: Date.now(),
-      });
-    }
-
-    for (const tc of toolCallsRef.current.values()) {
-      parts.push({
-        id: `streaming-tc-${tc.toolCallId}`,
-        messageId,
-        type: "tool-call",
-        toolName: tc.toolName,
-        toolCallId: tc.toolCallId,
-        content: JSON.stringify(tc.input),
-        tokenEstimate: 0,
-        pruned: false,
-        createdAt: Date.now(),
-      });
-      if (tc.output !== undefined) {
-        parts.push({
-          id: `streaming-tr-${tc.toolCallId}`,
-          messageId,
-          type: "tool-result",
-          toolName: tc.toolName,
-          toolCallId: tc.toolCallId,
-          content: JSON.stringify(tc.output),
-          tokenEstimate: 0,
-          pruned: false,
-          createdAt: Date.now(),
-        });
-      }
-    }
-
-    if (streamingContentRef.current) {
-      parts.push({
-        id: "streaming-text",
-        messageId,
-        type: "text",
-        toolName: null,
-        toolCallId: null,
-        content: streamingContentRef.current,
-        tokenEstimate: 0,
-        pruned: false,
-        createdAt: Date.now(),
-      });
-    }
-
-    return parts;
-  }, []);
-
-  // Update the last assistant message with current streaming state
-  const updateAssistantMessage = useCallback(() => {
-    setMessages((prev) => {
-      const updated = [...prev];
-      const last = updated[updated.length - 1];
-      if (last?.role === "assistant") {
-        const parts = buildStreamingParts(last.id);
-        updated[updated.length - 1] = {
-          ...last,
-          content: streamingContentRef.current,
-          parts: parts.length > 0 ? parts : undefined,
-        };
-      }
-      return updated;
-    });
-  }, [buildStreamingParts]);
-
-  // Load existing messages and restore token usage
+  // Load initial messages from DB and restore token usage
   useEffect(() => {
     const load = async () => {
       setIsLoading(true);
       try {
         const data = await api.getMessages(sessionId);
-        setMessages(data);
+        const uiMessages = dbMessagesToUIMessages(data);
+        setMessages(uiMessages);
         messageCountRef.current = data.filter((m) => m.role === "user").length;
 
+        // Restore token usage from last assistant message
         const assistantMsgs = data.filter((m) => m.role === "assistant");
         if (assistantMsgs.length > 0) {
           const last = assistantMsgs[assistantMsgs.length - 1];
@@ -142,160 +103,23 @@ export function useChat(sessionId: string, onFirstMessage?: () => void) {
       }
     };
     load();
-  }, [sessionId]);
+  }, [sessionId, setMessages]);
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    (content: string) => {
       if (isStreaming) return;
-
-      const isFirstMessage = messageCountRef.current === 0;
       messageCountRef.current++;
-
-      const userMessage: Message = {
-        id: `temp-${Date.now()}`,
-        sessionId,
-        role: "user",
-        content,
-        tokensInput: 0,
-        tokensOutput: 0,
-        tokensReasoning: 0,
-        tokensCacheRead: 0,
-        tokensCacheWrite: 0,
-        cost: 0,
-        createdAt: Date.now(),
-      };
-      setMessages((prev) => [...prev, userMessage]);
-
-      const assistantMessage: Message = {
-        id: `temp-assistant-${Date.now()}`,
-        sessionId,
-        role: "assistant",
-        content: "",
-        tokensInput: 0,
-        tokensOutput: 0,
-        tokensReasoning: 0,
-        tokensCacheRead: 0,
-        tokensCacheWrite: 0,
-        cost: 0,
-        createdAt: Date.now(),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-
-      setIsStreaming(true);
-      streamingContentRef.current = "";
-      reasoningRef.current = "";
-      toolCallsRef.current = new Map();
-      setStreamingMeta({ reasoningIsStreaming: false });
-
-      try {
-        for await (const event of api.streamMessage(sessionId, { content })) {
-          switch (event.type) {
-            case "reasoning-delta":
-              reasoningRef.current += event.data.delta;
-              setStreamingMeta({ reasoningIsStreaming: true });
-              updateAssistantMessage();
-              break;
-
-            case "token":
-              // First text token means reasoning is done
-              if (reasoningRef.current) {
-                setStreamingMeta({ reasoningIsStreaming: false });
-              }
-              streamingContentRef.current += event.data.delta;
-              updateAssistantMessage();
-              break;
-
-            case "tool-call": {
-              // First tool-call also means reasoning is done
-              if (reasoningRef.current) {
-                setStreamingMeta({ reasoningIsStreaming: false });
-              }
-              toolCallsRef.current.set(event.data.toolCallId, {
-                toolCallId: event.data.toolCallId,
-                toolName: event.data.toolName,
-                input: event.data.input,
-              });
-              updateAssistantMessage();
-              break;
-            }
-
-            case "tool-result": {
-              const existing = toolCallsRef.current.get(event.data.toolCallId);
-              if (existing) {
-                existing.output = event.data.output;
-                existing.isError = event.data.isError;
-              }
-              updateAssistantMessage();
-              break;
-            }
-
-            case "step-finish":
-              setTokenUsage(event.data.usage);
-              break;
-
-            case "compaction": {
-              // Reload messages from API after compaction replaces history
-              const refreshed = await api.getMessages(sessionId);
-              setMessages(refreshed);
-              // Reset streaming refs for continued streaming post-compaction
-              streamingContentRef.current = "";
-              reasoningRef.current = "";
-              toolCallsRef.current = new Map();
-              setStreamingMeta({ reasoningIsStreaming: false });
-              // Re-add assistant placeholder for continued streaming
-              const placeholder: Message = {
-                id: `temp-assistant-${Date.now()}`,
-                sessionId,
-                role: "assistant",
-                content: "",
-                tokensInput: 0,
-                tokensOutput: 0,
-                tokensReasoning: 0,
-                tokensCacheRead: 0,
-                tokensCacheWrite: 0,
-                cost: 0,
-                createdAt: Date.now(),
-              };
-              setMessages((prev) => [...prev, placeholder]);
-              break;
-            }
-
-            case "done":
-              setTokenUsage(event.data.usage);
-              setStreamingMeta({ reasoningIsStreaming: false });
-              setMessages((prev) => {
-                const updated = [...prev];
-                const last = updated[updated.length - 1];
-                if (last?.role === "assistant") {
-                  const parts = buildStreamingParts(event.data.messageId);
-                  updated[updated.length - 1] = {
-                    ...last,
-                    id: event.data.messageId,
-                    parts: parts.length > 0 ? parts : undefined,
-                  };
-                }
-                return updated;
-              });
-              if (isFirstMessage) {
-                api.generateTitle(sessionId, content).catch(console.error);
-                setTimeout(() => onFirstMessage?.(), 3000);
-              }
-              break;
-
-            case "error":
-              console.error("Stream error:", event.data.message);
-              break;
-          }
-        }
-      } catch (error) {
-        console.error("Stream failed:", error);
-      } finally {
-        setIsStreaming(false);
-        setStreamingMeta({ reasoningIsStreaming: false });
-      }
+      aiSendMessage({ text: content });
     },
-    [sessionId, isStreaming, onFirstMessage, updateAssistantMessage, buildStreamingParts],
+    [isStreaming, aiSendMessage],
   );
 
-  return { messages, isStreaming, isLoading, tokenUsage, streamingMeta, sendMessage };
+  return {
+    messages,
+    isStreaming,
+    isLoading,
+    tokenUsage,
+    streamingMeta,
+    sendMessage,
+  };
 }

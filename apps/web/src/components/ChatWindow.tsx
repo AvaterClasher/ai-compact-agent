@@ -1,12 +1,13 @@
 "use client";
 
-import type { Message, TokenUsage } from "@repo/shared";
+import type { TokenUsage } from "@repo/shared";
+import type { UIMessage } from "ai";
 import type { StreamingMeta } from "@/hooks/useChat";
 import { InputBar } from "./InputBar";
 import { MessageList } from "./MessageList";
 
 interface ChatWindowProps {
-  messages: Message[];
+  messages: UIMessage[];
   isStreaming: boolean;
   isLoading: boolean;
   tokenUsage: TokenUsage;

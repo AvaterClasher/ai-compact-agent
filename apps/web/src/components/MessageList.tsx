@@ -1,6 +1,6 @@
 "use client";
 
-import type { Message } from "@repo/shared";
+import type { UIMessage } from "ai";
 import { Loader2 } from "lucide-react";
 import {
   Conversation,
@@ -12,7 +12,7 @@ import type { StreamingMeta } from "@/hooks/useChat";
 import { ChatMessage } from "./ChatMessage";
 
 interface MessageListProps {
-  messages: Message[];
+  messages: UIMessage[];
   isLoading: boolean;
   isStreaming: boolean;
   streamingMeta: StreamingMeta;

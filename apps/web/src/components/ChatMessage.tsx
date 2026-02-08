@@ -1,6 +1,6 @@
 "use client";
 
-import type { Message as ExoMessage, MessagePart } from "@repo/shared";
+import type { UIMessage } from "ai";
 import { CopyIcon } from "lucide-react";
 import { CodeBlock } from "@/components/ai-elements/code-block";
 import {
@@ -32,48 +32,43 @@ import {
 import type { StreamingMeta } from "@/hooks/useChat";
 
 interface ChatMessageProps {
-  message: ExoMessage;
+  message: UIMessage;
   isStreaming?: boolean;
   streamingMeta?: StreamingMeta;
 }
 
 type ToolState = "input-available" | "output-available" | "output-error";
 
-function getToolState(toolCallId: string, parts: MessagePart[]): ToolState {
-  const result = parts.find((p) => p.type === "tool-result" && p.toolCallId === toolCallId);
-  if (!result) return "input-available";
-  try {
-    const output = JSON.parse(result.content);
-    if (output?.error) return "output-error";
-  } catch {
-    // ignore
-  }
-  return "output-available";
+/** Extract text content from a UIMessage */
+function getTextContent(message: UIMessage): string {
+  return message.parts
+    .filter((p): p is Extract<typeof p, { type: "text" }> => p.type === "text")
+    .map((p) => p.text)
+    .join("");
 }
 
-function getToolResult(toolCallId: string, parts: MessagePart[]): MessagePart | undefined {
-  return parts.find((p) => p.type === "tool-result" && p.toolCallId === toolCallId);
+interface DynamicToolPart {
+  type: "dynamic-tool";
+  toolName: string;
+  toolCallId: string;
+  state: string;
+  input?: unknown;
+  output?: unknown;
+  errorText?: string;
 }
 
-function parseContent(content: string): unknown {
-  try {
-    return JSON.parse(content);
-  } catch {
-    return content;
-  }
-}
-
-function ToolCallPart({ part, parts }: { part: MessagePart; parts: MessagePart[] }) {
-  const toolCallId = part.toolCallId ?? "";
-  const toolName = part.toolName ?? "";
-  const state = getToolState(toolCallId, parts);
-  const result = getToolResult(toolCallId, parts);
-  const input = parseContent(part.content);
-  const output = result ? parseContent(result.content) : undefined;
+function ToolCallPart({ part }: { part: DynamicToolPart }) {
+  const toolName = part.toolName;
+  const state: ToolState =
+    part.state === "output-error"
+      ? "output-error"
+      : part.state === "output-available"
+        ? "output-available"
+        : "input-available";
+  const input = part.input;
+  const output = part.output;
   const errorText =
-    state === "output-error" && typeof output === "object" && output !== null && "error" in output
-      ? String((output as { error: unknown }).error)
-      : undefined;
+    state === "output-error" ? (part.errorText ?? "Tool execution failed") : undefined;
 
   // Use Sandbox for executeCode tool
   if (toolName === "executeCode") {
@@ -118,7 +113,7 @@ function ToolCallPart({ part, parts }: { part: MessagePart; parts: MessagePart[]
       <ToolHeader title={toolName} type="tool-invocation" state={state} />
       <ToolContent>
         <ToolInput input={input} />
-        {result && <ToolOutput output={output} errorText={errorText} />}
+        {output !== undefined && <ToolOutput output={output} errorText={errorText} />}
       </ToolContent>
     </Tool>
   );
@@ -129,38 +124,39 @@ function AssistantParts({
   isStreaming,
   streamingMeta,
 }: {
-  message: ExoMessage;
+  message: UIMessage;
   isStreaming?: boolean;
   streamingMeta?: StreamingMeta;
 }) {
-  const parts = message.parts ?? [];
-  const hasContent = parts.some((p) => p.type === "text") || message.content;
+  const parts = message.parts;
+  const hasContent = parts.some((p) => p.type === "text") || getTextContent(message);
 
   return (
     <>
-      {parts.map((part) => {
+      {parts.map((part, i) => {
         switch (part.type) {
           case "reasoning":
             return (
               <Reasoning
-                key={part.id}
+                key={`${message.id}-reasoning-${i}`}
                 isStreaming={isStreaming && streamingMeta?.reasoningIsStreaming}
                 defaultOpen={isStreaming && streamingMeta?.reasoningIsStreaming}
               >
                 <ReasoningTrigger />
-                <ReasoningContent>{part.content}</ReasoningContent>
+                <ReasoningContent>{part.text}</ReasoningContent>
               </Reasoning>
             );
 
-          case "tool-call":
-            return <ToolCallPart key={part.id} part={part} parts={parts} />;
-
-          case "tool-result":
-            // Rendered as part of the matching tool-call
-            return null;
+          case "dynamic-tool":
+            return (
+              <ToolCallPart
+                key={`${message.id}-tool-${(part as DynamicToolPart).toolCallId}`}
+                part={part as DynamicToolPart}
+              />
+            );
 
           case "text":
-            return <MessageResponse key={part.id}>{part.content}</MessageResponse>;
+            return <MessageResponse key={`${message.id}-text-${i}`}>{part.text}</MessageResponse>;
 
           default:
             return null;
@@ -179,13 +175,14 @@ function AssistantParts({
 export function ChatMessage({ message, isStreaming, streamingMeta }: ChatMessageProps) {
   const isUser = message.role === "user";
   const isSystem = message.role === "system";
+  const textContent = getTextContent(message);
 
   if (isSystem) {
     return (
       <div className="py-1.5">
         <Message from="system">
           <MessageContent>
-            <div className="text-xs text-muted-foreground italic">{message.content}</div>
+            <div className="text-xs text-muted-foreground italic">{textContent}</div>
           </MessageContent>
         </Message>
       </div>
@@ -198,7 +195,7 @@ export function ChatMessage({ message, isStreaming, streamingMeta }: ChatMessage
         <Message from="user">
           <MessageContent>
             <div className="text-[15px] leading-relaxed text-foreground whitespace-pre-wrap">
-              {message.content}
+              {textContent}
             </div>
           </MessageContent>
         </Message>
@@ -207,7 +204,7 @@ export function ChatMessage({ message, isStreaming, streamingMeta }: ChatMessage
   }
 
   // Assistant message
-  const hasParts = message.parts && message.parts.length > 0;
+  const hasParts = message.parts.length > 0;
 
   return (
     <div className="py-3">
@@ -219,20 +216,18 @@ export function ChatMessage({ message, isStreaming, streamingMeta }: ChatMessage
               isStreaming={isStreaming}
               streamingMeta={streamingMeta}
             />
-          ) : message.content ? (
-            <MessageResponse>{message.content}</MessageResponse>
           ) : (
             <Shimmer as="span" className="text-sm">
               Thinking...
             </Shimmer>
           )}
         </MessageContent>
-        {message.content && (
+        {textContent && (
           <MessageActions>
             <MessageAction
               tooltip="Copy"
               label="Copy message"
-              onClick={() => navigator.clipboard.writeText(message.content)}
+              onClick={() => navigator.clipboard.writeText(textContent)}
             >
               <CopyIcon className="size-3" />
             </MessageAction>
