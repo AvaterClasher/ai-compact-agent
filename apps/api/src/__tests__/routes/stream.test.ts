@@ -58,29 +58,19 @@ const app = {
     appModule.fetch(new Request(`http://localhost${path}`, init), {}),
 };
 
-/** Parse raw SSE text into an array of { event, data } objects */
-function parseSSE(text: string): { event: string; data: unknown }[] {
-  const events: { event: string; data: unknown }[] = [];
-  let currentEvent = "";
-  let currentData = "";
-
+/** Parse UIMessageStream (SSE data-only format) into typed chunks */
+function parseUIStream(text: string): Array<{ type: string; [key: string]: unknown }> {
+  const chunks: Array<{ type: string; [key: string]: unknown }> = [];
   for (const line of text.split("\n")) {
-    if (line.startsWith("event: ")) {
-      currentEvent = line.slice(7).trim();
-    } else if (line.startsWith("data: ")) {
-      currentData = line.slice(6);
-    } else if (line === "" && currentEvent && currentData) {
+    if (line.startsWith("data: ") && !line.startsWith("data: [DONE]")) {
       try {
-        events.push({ event: currentEvent, data: JSON.parse(currentData) });
+        chunks.push(JSON.parse(line.slice(6)));
       } catch {
         // skip malformed
       }
-      currentEvent = "";
-      currentData = "";
     }
   }
-
-  return events;
+  return chunks;
 }
 
 describe("stream routes", () => {
@@ -117,7 +107,7 @@ describe("stream routes", () => {
     expect(res.status).toBe(409);
   });
 
-  test("returns SSE stream with token and done events", async () => {
+  test("returns UIMessageStream with text-delta and finish events", async () => {
     const session = await insertSession(testDb);
     const res = await app.request(`/api/stream/${session.id}`, {
       method: "POST",
@@ -129,11 +119,14 @@ describe("stream routes", () => {
     expect(res.headers.get("content-type")).toContain("text/event-stream");
 
     const text = await res.text();
-    expect(text).toContain("event: token");
-    expect(text).toContain("event: done");
+    const chunks = parseUIStream(text);
+    const types = chunks.map((c) => c.type);
+
+    expect(types).toContain("text-delta");
+    expect(types).toContain("finish");
   });
 
-  test("done event contains messageId and usage", async () => {
+  test("done data event contains messageId and usage", async () => {
     const session = await insertSession(testDb);
     const res = await app.request(`/api/stream/${session.id}`, {
       method: "POST",
@@ -142,17 +135,17 @@ describe("stream routes", () => {
     });
 
     const text = await res.text();
-    const events = parseSSE(text);
-    const doneEvent = events.find((e) => e.event === "done");
+    const chunks = parseUIStream(text);
+    const doneChunk = chunks.find((c) => c.type === "data-done");
 
-    expect(doneEvent).toBeDefined();
-    expect(doneEvent?.data).toEqual({
+    expect(doneChunk).toBeDefined();
+    expect(doneChunk?.data).toEqual({
       messageId: "msg-123",
       usage: { input: 100, output: 50, reasoning: 0, cacheRead: 0, cacheWrite: 0 },
     });
   });
 
-  test("emits step-finish before done", async () => {
+  test("emits finish-step before finish", async () => {
     const session = await insertSession(testDb);
     const res = await app.request(`/api/stream/${session.id}`, {
       method: "POST",
@@ -161,15 +154,15 @@ describe("stream routes", () => {
     });
 
     const text = await res.text();
-    const events = parseSSE(text);
-    const eventTypes = events.map((e) => e.event);
+    const chunks = parseUIStream(text);
+    const types = chunks.map((c) => c.type);
 
-    expect(eventTypes).toContain("step-finish");
-    expect(eventTypes).toContain("done");
-    expect(eventTypes.indexOf("step-finish")).toBeLessThan(eventTypes.indexOf("done"));
+    expect(types).toContain("finish-step");
+    expect(types).toContain("finish");
+    expect(types.indexOf("finish-step")).toBeLessThan(types.lastIndexOf("finish"));
   });
 
-  test("token events contain delta text", async () => {
+  test("text-delta events contain delta text", async () => {
     const session = await insertSession(testDb);
     const res = await app.request(`/api/stream/${session.id}`, {
       method: "POST",
@@ -178,11 +171,11 @@ describe("stream routes", () => {
     });
 
     const text = await res.text();
-    const events = parseSSE(text);
-    const tokenEvents = events.filter((e) => e.event === "token");
+    const chunks = parseUIStream(text);
+    const textDeltas = chunks.filter((c) => c.type === "text-delta");
 
-    expect(tokenEvents).toHaveLength(2);
-    expect(tokenEvents[0].data).toEqual({ delta: "Hello " });
-    expect(tokenEvents[1].data).toEqual({ delta: "world!" });
+    expect(textDeltas).toHaveLength(2);
+    expect(textDeltas[0].delta).toBe("Hello ");
+    expect(textDeltas[1].delta).toBe("world!");
   });
 });

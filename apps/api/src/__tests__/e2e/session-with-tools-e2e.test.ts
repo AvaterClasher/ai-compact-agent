@@ -142,28 +142,19 @@ const app = {
     appModule.fetch(new Request(`http://localhost${path}`, init), {}),
 };
 
-function parseSSE(text: string): { event: string; data: unknown }[] {
-  const events: { event: string; data: unknown }[] = [];
-  let currentEvent = "";
-  let currentData = "";
-
+/** Parse UIMessageStream (SSE data-only format) into typed chunks */
+function parseUIStream(text: string): Array<{ type: string; [key: string]: unknown }> {
+  const chunks: Array<{ type: string; [key: string]: unknown }> = [];
   for (const line of text.split("\n")) {
-    if (line.startsWith("event: ")) {
-      currentEvent = line.slice(7).trim();
-    } else if (line.startsWith("data: ")) {
-      currentData = line.slice(6);
-    } else if (line === "" && currentEvent && currentData) {
+    if (line.startsWith("data: ") && !line.startsWith("data: [DONE]")) {
       try {
-        events.push({ event: currentEvent, data: JSON.parse(currentData) });
+        chunks.push(JSON.parse(line.slice(6)));
       } catch {
         // skip malformed
       }
-      currentEvent = "";
-      currentData = "";
     }
   }
-
-  return events;
+  return chunks;
 }
 
 describe("E2E: session with tool calls", () => {
@@ -191,14 +182,14 @@ describe("E2E: session with tool calls", () => {
     expect(streamRes.status).toBe(200);
 
     const text = await streamRes.text();
-    const events = parseSSE(text);
-    const eventTypes = events.map((e) => e.event);
+    const chunks = parseUIStream(text);
+    const types = chunks.map((c) => c.type);
 
-    // Verify SSE events include tool-call, tool-result, token, done
-    expect(eventTypes).toContain("tool-call");
-    expect(eventTypes).toContain("tool-result");
-    expect(eventTypes).toContain("token");
-    expect(eventTypes).toContain("done");
+    // Verify UIMessageStream events include tool and text events
+    expect(types).toContain("tool-input-available");
+    expect(types).toContain("tool-output-available");
+    expect(types).toContain("text-delta");
+    expect(types).toContain("finish");
 
     // Step 3: Verify messages endpoint includes tool parts
     const msgRes = await app.request(`/api/messages/${session.id}`);
@@ -228,7 +219,7 @@ describe("E2E: session with tool calls", () => {
     expect(textPart).toBeDefined();
   });
 
-  test("tool-call SSE event includes toolName and input", async () => {
+  test("tool-input-available event includes toolName and input", async () => {
     const createRes = await app.request("/api/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -243,17 +234,20 @@ describe("E2E: session with tool calls", () => {
     });
 
     const text = await streamRes.text();
-    const events = parseSSE(text);
+    const chunks = parseUIStream(text);
 
-    const toolCallEvent = events.find((e) => e.event === "tool-call") as {
-      data: { toolCallId: string; toolName: string; input: unknown };
+    const toolInputChunk = chunks.find((c) => c.type === "tool-input-available") as {
+      type: string;
+      toolCallId: string;
+      toolName: string;
+      input: unknown;
     };
-    expect(toolCallEvent).toBeDefined();
-    expect(toolCallEvent.data.toolName).toBe("readFile");
-    expect(toolCallEvent.data.input).toEqual({ path: "/tmp/test.ts" });
+    expect(toolInputChunk).toBeDefined();
+    expect(toolInputChunk.toolName).toBe("readFile");
+    expect(toolInputChunk.input).toEqual({ path: "/tmp/test.ts" });
   });
 
-  test("tool-result SSE event includes output", async () => {
+  test("tool-output-available event includes output", async () => {
     const createRes = await app.request("/api/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -268,13 +262,14 @@ describe("E2E: session with tool calls", () => {
     });
 
     const text = await streamRes.text();
-    const events = parseSSE(text);
+    const chunks = parseUIStream(text);
 
-    const toolResultEvent = events.find((e) => e.event === "tool-result") as {
-      data: { toolCallId: string; toolName: string; output: unknown };
+    const toolOutputChunk = chunks.find((c) => c.type === "tool-output-available") as {
+      type: string;
+      toolCallId: string;
+      output: unknown;
     };
-    expect(toolResultEvent).toBeDefined();
-    expect(toolResultEvent.data.toolName).toBe("readFile");
-    expect(toolResultEvent.data.output).toEqual({ content: "export const x = 1;" });
+    expect(toolOutputChunk).toBeDefined();
+    expect(toolOutputChunk.output).toEqual({ content: "export const x = 1;" });
   });
 });

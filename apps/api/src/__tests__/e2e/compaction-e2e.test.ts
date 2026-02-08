@@ -110,38 +110,28 @@ const app = {
     appModule.fetch(new Request(`http://localhost${path}`, init), {}),
 };
 
-/** Parse raw SSE text into an array of { event, data } objects */
-function parseSSE(text: string): { event: string; data: unknown }[] {
-  const events: { event: string; data: unknown }[] = [];
-  let currentEvent = "";
-  let currentData = "";
-
+/** Parse UIMessageStream (SSE data-only format) into typed chunks */
+function parseUIStream(text: string): Array<{ type: string; [key: string]: unknown }> {
+  const chunks: Array<{ type: string; [key: string]: unknown }> = [];
   for (const line of text.split("\n")) {
-    if (line.startsWith("event: ")) {
-      currentEvent = line.slice(7).trim();
-    } else if (line.startsWith("data: ")) {
-      currentData = line.slice(6);
-    } else if (line === "" && currentEvent && currentData) {
+    if (line.startsWith("data: ") && !line.startsWith("data: [DONE]")) {
       try {
-        events.push({ event: currentEvent, data: JSON.parse(currentData) });
+        chunks.push(JSON.parse(line.slice(6)));
       } catch {
         // skip malformed
       }
-      currentEvent = "";
-      currentData = "";
     }
   }
-
-  return events;
+  return chunks;
 }
 
-describe("compaction e2e (SSE stream)", () => {
+describe("compaction e2e (UIMessageStream)", () => {
   beforeEach(() => {
     testDb = createTestDB();
     mockMode = "normal";
   });
 
-  test("compaction event appears in SSE stream when onCompaction is called", async () => {
+  test("compaction is transparent — no compaction event in stream", async () => {
     mockMode = "compaction";
     const session = await insertSession(testDb);
     await insertMessage(testDb, session.id, {
@@ -158,14 +148,17 @@ describe("compaction e2e (SSE stream)", () => {
 
     expect(res.status).toBe(200);
     const text = await res.text();
-    const events = parseSSE(text);
+    const chunks = parseUIStream(text);
+    const types = chunks.map((c) => c.type);
 
-    const compactionEvent = events.find((e) => e.event === "compaction");
-    expect(compactionEvent).toBeDefined();
-    expect(compactionEvent?.data).toEqual({});
+    // Compaction is now transparent to the client — no compaction event
+    expect(types).not.toContain("compaction");
+    // But stream should still complete normally with text and finish
+    expect(types).toContain("text-delta");
+    expect(types).toContain("finish");
   });
 
-  test("compaction event appears before done event", async () => {
+  test("stream completes normally after compaction", async () => {
     mockMode = "compaction";
     const session = await insertSession(testDb);
 
@@ -176,15 +169,14 @@ describe("compaction e2e (SSE stream)", () => {
     });
 
     const text = await res.text();
-    const events = parseSSE(text);
-    const eventTypes = events.map((e) => e.event);
+    const chunks = parseUIStream(text);
+    const types = chunks.map((c) => c.type);
 
-    const compactionIdx = eventTypes.indexOf("compaction");
-    const doneIdx = eventTypes.indexOf("done");
-
-    expect(compactionIdx).not.toBe(-1);
-    expect(doneIdx).not.toBe(-1);
-    expect(compactionIdx).toBeLessThan(doneIdx);
+    // Should have a complete stream lifecycle
+    expect(types).toContain("start");
+    expect(types).toContain("text-delta");
+    expect(types).toContain("data-done");
+    expect(types).toContain("finish");
   });
 
   test("after compaction, messages endpoint returns only summary", async () => {
@@ -211,7 +203,7 @@ describe("compaction e2e (SSE stream)", () => {
     expect(systemMsgs[0].content).toContain("E2E compaction summary");
   });
 
-  test("no compaction → no compaction event in stream", async () => {
+  test("no compaction → normal stream without compaction events", async () => {
     mockMode = "normal";
     const session = await insertSession(testDb);
 
@@ -222,13 +214,15 @@ describe("compaction e2e (SSE stream)", () => {
     });
 
     const text = await res.text();
-    const events = parseSSE(text);
-    const compactionEvent = events.find((e) => e.event === "compaction");
+    const chunks = parseUIStream(text);
+    const types = chunks.map((c) => c.type);
 
-    expect(compactionEvent).toBeUndefined();
+    expect(types).not.toContain("compaction");
+    expect(types).toContain("text-delta");
+    expect(types).toContain("finish");
   });
 
-  test("tool-call + tool-result + compaction all appear in SSE in correct order", async () => {
+  test("tool events + compaction all appear correctly in stream", async () => {
     mockMode = "tool-then-compaction";
     const session = await insertSession(testDb);
 
@@ -239,25 +233,26 @@ describe("compaction e2e (SSE stream)", () => {
     });
 
     const text = await res.text();
-    const events = parseSSE(text);
-    const eventTypes = events.map((e) => e.event);
+    const chunks = parseUIStream(text);
+    const types = chunks.map((c) => c.type);
 
-    const toolCallIdx = eventTypes.indexOf("tool-call");
-    const toolResultIdx = eventTypes.indexOf("tool-result");
-    const compactionIdx = eventTypes.indexOf("compaction");
-    const doneIdx = eventTypes.indexOf("done");
+    // Tool events should be present
+    expect(types).toContain("tool-input-available");
+    expect(types).toContain("tool-output-available");
 
-    expect(toolCallIdx).not.toBe(-1);
-    expect(toolResultIdx).not.toBe(-1);
-    expect(compactionIdx).not.toBe(-1);
-    expect(doneIdx).not.toBe(-1);
+    // Compaction is transparent
+    expect(types).not.toContain("compaction");
 
-    expect(toolCallIdx).toBeLessThan(toolResultIdx);
-    expect(toolResultIdx).toBeLessThan(compactionIdx);
-    expect(compactionIdx).toBeLessThan(doneIdx);
+    // Stream should finish normally
+    expect(types).toContain("finish");
+
+    // Tool events should appear before text-delta and finish
+    const toolInputIdx = types.indexOf("tool-input-available");
+    const toolOutputIdx = types.indexOf("tool-output-available");
+    expect(toolInputIdx).toBeLessThan(toolOutputIdx);
   });
 
-  test("multiple compaction events in single stream", async () => {
+  test("multiple compactions are transparent — stream completes normally", async () => {
     mockMode = "multi-compaction";
     const session = await insertSession(testDb);
 
@@ -268,13 +263,18 @@ describe("compaction e2e (SSE stream)", () => {
     });
 
     const text = await res.text();
-    const events = parseSSE(text);
-    const compactionEvents = events.filter((e) => e.event === "compaction");
+    const chunks = parseUIStream(text);
+    const types = chunks.map((c) => c.type);
 
-    expect(compactionEvents.length).toBe(2);
+    // No compaction events
+    expect(types).not.toContain("compaction");
+
+    // Stream should still have text and complete
+    expect(types).toContain("text-delta");
+    expect(types).toContain("finish");
   });
 
-  test("error event appears in SSE stream", async () => {
+  test("error event appears in stream", async () => {
     mockMode = "error";
     const session = await insertSession(testDb);
 
@@ -285,11 +285,11 @@ describe("compaction e2e (SSE stream)", () => {
     });
 
     const text = await res.text();
-    const events = parseSSE(text);
+    const chunks = parseUIStream(text);
 
-    const errorEvent = events.find((e) => e.event === "error");
-    expect(errorEvent).toBeDefined();
-    expect((errorEvent?.data as { message: string }).message).toContain("Something went wrong");
+    const errorChunk = chunks.find((c) => c.type === "error");
+    expect(errorChunk).toBeDefined();
+    expect(errorChunk?.errorText).toContain("Something went wrong");
   });
 
   test("stream to compacting session returns 409", async () => {

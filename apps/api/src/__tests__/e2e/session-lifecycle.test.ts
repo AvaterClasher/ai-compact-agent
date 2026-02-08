@@ -135,10 +135,10 @@ describe("E2E: session lifecycle", () => {
     });
     expect(streamRes.status).toBe(200);
 
-    // Consume the stream
+    // Consume the stream and verify UIMessageStream format
     const streamBody = await streamRes.text();
-    expect(streamBody).toContain("event: token");
-    expect(streamBody).toContain("event: done");
+    expect(streamBody).toContain("text-delta");
+    expect(streamBody).toContain("finish");
 
     // Step 3: Verify messages were persisted
     const messagesRes = await app.request(`/api/messages/${session.id}`);
