@@ -13,7 +13,6 @@ salvador/
 ├── packages/
 │   └── shared/       # Shared types, Zod schemas, DB schema, API client
 └── docker/
-    ├── api.Dockerfile      # API server container
     └── sandbox.Dockerfile  # Sandboxed code execution container
 ```
 
@@ -35,28 +34,15 @@ salvador/
 
 ## Quick Start
 
-### Option 1: Docker (Recommended)
-
-The `DOCKER_DB` feature flag is enabled by default, running the API and SQLite database inside Docker with persistent volume storage.
-
-```bash
-# Copy environment file and add your API keys
-cp .env.example .env
-
-# Start the API with Docker Compose
-docker compose up --build
-```
-
-The API will be available at `http://localhost:5001`. SQLite data persists in a Docker volume (`db-data`).
-
-### Option 2: Local Development
-
 ```bash
 # Install dependencies
 bun install
 
 # Copy environment file and add your API keys
 cp .env.example .env
+
+# (Optional) Start Docker-managed SQLite volume
+docker compose up -d
 
 # Start all apps (API + Web + CLI)
 bun run dev
@@ -67,7 +53,7 @@ bun run dev:web   # Web only (port 3000)
 bun run dev:cli   # CLI only
 ```
 
-The sandbox Docker image (`exo-sandbox:latest`) is built automatically on first API startup.
+The sandbox Docker image (`exo-sandbox:latest`) is built automatically on first API startup. When `DOCKER_DB=true`, the SQLite database is stored in a Docker-managed volume at `./data`.
 
 ## Environment Variables
 
@@ -77,7 +63,7 @@ The sandbox Docker image (`exo-sandbox:latest`) is built automatically on first 
 | `OPENAI_API_KEY` | is required | - | OpenAI API key for GPT/O-series models |
 | `DATABASE_PATH` | No | `./data/agent.db` | SQLite database file path |
 | `PORT` | No | `5001` | API server port |
-| `DOCKER_DB` | No | `true` | Run API + SQLite in Docker via `docker compose up` |
+| `DOCKER_DB` | No | `true` | Persist SQLite in a Docker-managed volume (`docker compose up -d`) |
 | `AXIOM_API_TOKEN` | No | - | Axiom token for distributed tracing (disabled if empty) |
 | `AXIOM_DATASET` | No | `backend-traces` | Axiom dataset name |
 | `AXIOM_OTLP_ENDPOINT` | No | `https://api.axiom.co/v1/traces` | OpenTelemetry endpoint |
@@ -156,13 +142,9 @@ Each agent session gets a dedicated Docker container for code execution:
 - **Lifecycle:** Created lazily on first tool use, removed when session is deleted
 - **Tools:** `shell`, `readFile`, `writeFile`, `executeCode` (JavaScript, TypeScript, Python, shell)
 
-### API Container (Docker Compose)
+### SQLite Volume (Docker Compose)
 
-When `DOCKER_DB=true` (default), the API runs in a container with:
-
-- SQLite persisted on a named Docker volume (`db-data`)
-- Docker socket mounted for managing sandbox containers from within the API container
-- All environment variables forwarded from the host `.env`
+When `DOCKER_DB=true` (default), `docker compose up -d` starts a lightweight volume service that manages the `./data` directory. The API runs on the host and writes to `./data/agent.db`. Docker provides volume lifecycle management (inspect, backup, prune).
 
 ## Compaction Strategy
 
@@ -188,7 +170,7 @@ Compaction is checked:
 
 - **Pre-send and mid-turn overflow detection:** Proactive compaction prevents the agent from ever hitting a hard context limit, even during long multi-step tool-use chains.
 
-- **Docker socket mounting:** The containerized API manages sandbox containers via the host Docker daemon (`/var/run/docker.sock`). This gives the API container full Docker access — a tradeoff between isolation and functionality.
+- **Host Docker access:** The API runs on the host and manages sandbox containers directly via the Docker CLI. No socket mounting is needed.
 
 - **nanoid for ID generation:** Shorter and URL-safe compared to UUIDs, with sufficient collision resistance for this use case.
 
