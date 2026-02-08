@@ -1,7 +1,15 @@
-import type { Message } from "@repo/shared";
+import type { UIMessage } from "ai";
 
 interface MessageListProps {
-  messages: Message[];
+  messages: UIMessage[];
+}
+
+/** Extract text content from a UIMessage */
+function getTextContent(message: UIMessage): string {
+  return message.parts
+    .filter((p): p is Extract<typeof p, { type: "text" }> => p.type === "text")
+    .map((p) => p.text)
+    .join("");
 }
 
 export function MessageList({ messages }: MessageListProps) {
@@ -16,7 +24,7 @@ export function MessageList({ messages }: MessageListProps) {
               {msg.role === "user" ? "You" : msg.role === "system" ? "System" : "Agent"}
             </strong>
           </text>
-          <text fg="#fafafa"> {msg.content}</text>
+          <text fg="#fafafa"> {getTextContent(msg)}</text>
         </box>
       ))}
     </scrollbox>

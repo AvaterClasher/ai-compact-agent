@@ -1,12 +1,29 @@
-import type { Message, TokenUsage } from "@repo/shared";
+import { useChat as useAIChat } from "@ai-sdk/react";
+import type { TokenUsage } from "@repo/shared";
+import { dbMessagesToUIMessages } from "@repo/shared";
 import { AgentAPIClient } from "@repo/shared/api-client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { DefaultChatTransport } from "ai";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const api = new AgentAPIClient();
 
+function createSessionTransport(sessionId: string) {
+  return new DefaultChatTransport({
+    api: `http://localhost:5001/api/stream/${sessionId}`,
+    prepareSendMessagesRequest: ({ messages }) => {
+      const lastMessage = messages[messages.length - 1];
+      const textPart = lastMessage?.parts.find(
+        (p): p is Extract<(typeof lastMessage.parts)[number], { type: "text" }> =>
+          p.type === "text",
+      );
+      return {
+        body: { content: textPart?.text ?? "" },
+      };
+    },
+  });
+}
+
 export function useAgent(sessionId: string, onFirstMessage?: () => void) {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isStreaming, setIsStreaming] = useState(false);
   const [tokenUsage, setTokenUsage] = useState<TokenUsage>({
     input: 0,
     output: 0,
@@ -15,122 +32,62 @@ export function useAgent(sessionId: string, onFirstMessage?: () => void) {
     cacheWrite: 0,
   });
   const messageCountRef = useRef(0);
+  const onFirstMessageRef = useRef(onFirstMessage);
+  onFirstMessageRef.current = onFirstMessage;
+
+  const transport = useMemo(() => createSessionTransport(sessionId), [sessionId]);
+
+  const {
+    messages,
+    sendMessage: aiSendMessage,
+    setMessages,
+    status,
+  } = useAIChat({
+    id: sessionId,
+    transport,
+    onData: (dataPart) => {
+      const part = dataPart as { type: string; data: unknown };
+      if (part.type === "data-token-usage") {
+        setTokenUsage(part.data as TokenUsage);
+      }
+      if (part.type === "data-done") {
+        const { usage } = part.data as { messageId: string; usage: TokenUsage };
+        setTokenUsage(usage);
+        if (messageCountRef.current === 1) {
+          const firstUserMsg = messages.find((m) => m.role === "user");
+          const textPart = firstUserMsg?.parts.find((p) => p.type === "text") as
+            | { type: "text"; text: string }
+            | undefined;
+          if (textPart) {
+            api.generateTitle(sessionId, textPart.text).catch(console.error);
+          }
+          setTimeout(() => onFirstMessageRef.current?.(), 3000);
+        }
+      }
+    },
+  });
+
+  const isStreaming = status === "streaming" || status === "submitted";
 
   // Load existing messages
   useEffect(() => {
     api
       .getMessages(sessionId)
       .then((data) => {
-        setMessages(data);
+        const uiMessages = dbMessagesToUIMessages(data);
+        setMessages(uiMessages);
         messageCountRef.current = data.filter((m) => m.role === "user").length;
       })
       .catch(console.error);
-  }, [sessionId]);
+  }, [sessionId, setMessages]);
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    (content: string) => {
       if (isStreaming) return;
-
-      const isFirstMessage = messageCountRef.current === 0;
       messageCountRef.current++;
-
-      // Add user message
-      const userMsg: Message = {
-        id: `temp-${Date.now()}`,
-        sessionId,
-        role: "user",
-        content,
-        tokensInput: 0,
-        tokensOutput: 0,
-        tokensReasoning: 0,
-        tokensCacheRead: 0,
-        tokensCacheWrite: 0,
-        cost: 0,
-        createdAt: Date.now(),
-      };
-      setMessages((prev) => [...prev, userMsg]);
-
-      // Add assistant placeholder
-      const assistantMsg: Message = {
-        id: `temp-assistant-${Date.now()}`,
-        sessionId,
-        role: "assistant",
-        content: "",
-        tokensInput: 0,
-        tokensOutput: 0,
-        tokensReasoning: 0,
-        tokensCacheRead: 0,
-        tokensCacheWrite: 0,
-        cost: 0,
-        createdAt: Date.now(),
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
-
-      setIsStreaming(true);
-      let streamContent = "";
-
-      try {
-        for await (const event of api.streamMessage(sessionId, { content })) {
-          switch (event.type) {
-            case "token":
-              streamContent += event.data.delta;
-              setMessages((prev) => {
-                const updated = [...prev];
-                const last = updated[updated.length - 1];
-                if (last && last.role === "assistant") {
-                  updated[updated.length - 1] = { ...last, content: streamContent };
-                }
-                return updated;
-              });
-              break;
-
-            case "step-finish":
-              setTokenUsage(event.data.usage);
-              break;
-
-            case "compaction": {
-              // Reload messages from API after compaction
-              const refreshed = await api.getMessages(sessionId);
-              setMessages(refreshed);
-              // Reset streaming state for continued streaming post-compaction
-              streamContent = "";
-              const postCompactPlaceholder: Message = {
-                id: `temp-assistant-${Date.now()}`,
-                sessionId,
-                role: "assistant",
-                content: "",
-                tokensInput: 0,
-                tokensOutput: 0,
-                tokensReasoning: 0,
-                tokensCacheRead: 0,
-                tokensCacheWrite: 0,
-                cost: 0,
-                createdAt: Date.now(),
-              };
-              setMessages((prev) => [...prev, postCompactPlaceholder]);
-              break;
-            }
-
-            case "done":
-              setTokenUsage(event.data.usage);
-              if (isFirstMessage) {
-                api.generateTitle(sessionId, content).catch(console.error);
-                setTimeout(() => onFirstMessage?.(), 3000);
-              }
-              break;
-
-            case "error":
-              console.error("Stream error:", event.data.message);
-              break;
-          }
-        }
-      } catch (error) {
-        console.error("Stream failed:", error);
-      } finally {
-        setIsStreaming(false);
-      }
+      aiSendMessage({ text: content });
     },
-    [sessionId, isStreaming, onFirstMessage],
+    [isStreaming, aiSendMessage],
   );
 
   return { messages, isStreaming, tokenUsage, sendMessage };
