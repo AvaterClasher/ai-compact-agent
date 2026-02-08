@@ -152,7 +152,10 @@ describe("loadConversation (via runAgentLoop streamText capture)", () => {
       | undefined;
     expect(toolMsg).toBeDefined();
     expect(toolMsg?.content[0].toolCallId).toBe("call_1");
-    expect(toolMsg?.content[0].output).toEqual({ content: "file contents" });
+    expect(toolMsg?.content[0].output).toEqual({
+      type: "json",
+      value: { content: "file contents" },
+    });
   });
 
   test("pruned tool-result parts → JSON.parse works on placeholder content", async () => {
@@ -186,8 +189,11 @@ describe("loadConversation (via runAgentLoop streamText capture)", () => {
 
     const toolMsg = capturedMessages.find((m: any) => m.role === "tool") as any;
     expect(toolMsg).toBeDefined();
-    // The output should be the parsed placeholder string
-    expect(toolMsg.content[0].output).toBe("[content pruned to save context]");
+    // The output should be wrapped as text type (string values get text wrapping)
+    expect(toolMsg.content[0].output).toEqual({
+      type: "text",
+      value: "[content pruned to save context]",
+    });
   });
 
   test("post-compaction system summary → loads as system role message", async () => {

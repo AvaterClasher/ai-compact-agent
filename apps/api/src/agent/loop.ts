@@ -38,19 +38,27 @@ type AssistantContentPart =
   | { type: "text"; text: string }
   | { type: "tool-call"; toolCallId: string; toolName: string; input: unknown };
 
-type ToolResultPart = {
+export type ToolResultOutput = { type: "json"; value: unknown } | { type: "text"; value: string };
+
+export type ToolResultPart = {
   type: "tool-result";
   toolCallId: string;
   toolName: string;
-  output: unknown;
+  output: ToolResultOutput;
 };
 
-type ConversationMessage =
+/** Wrap raw tool output into the AI SDK v6 discriminated union format. */
+export function wrapToolOutput(raw: unknown): ToolResultOutput {
+  if (typeof raw === "string") return { type: "text", value: raw };
+  return { type: "json", value: raw };
+}
+
+export type ConversationMessage =
   | { role: "user" | "system"; content: string }
   | { role: "assistant"; content: string | AssistantContentPart[] }
   | { role: "tool"; content: ToolResultPart[] };
 
-async function loadConversation(sessionId: string): Promise<ConversationMessage[]> {
+export async function loadConversation(sessionId: string): Promise<ConversationMessage[]> {
   const dbMessages = await db
     .select()
     .from(messages)
@@ -98,7 +106,7 @@ async function loadConversation(sessionId: string): Promise<ConversationMessage[
               type: "tool-result" as const,
               toolCallId: p.toolCallId!,
               toolName: p.toolName!,
-              output: JSON.parse(p.content),
+              output: wrapToolOutput(JSON.parse(p.content)),
             })),
           });
         }
@@ -341,7 +349,7 @@ export async function runAgentLoop(
                 type: "tool-result" as const,
                 toolCallId: tr.toolCallId,
                 toolName: tr.toolName,
-                output: tr.result,
+                output: wrapToolOutput(tr.result),
               })),
             });
           } else {
