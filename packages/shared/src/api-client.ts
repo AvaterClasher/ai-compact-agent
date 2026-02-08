@@ -1,6 +1,5 @@
 import { API_BASE_URL } from "./constants.js";
-import type { SSEEvent } from "./types/agent.js";
-import type { Message, SendMessageInput } from "./types/message.js";
+import type { Message } from "./types/message.js";
 import type { CreateSessionInput, Session, UpdateSessionInput } from "./types/session.js";
 
 export class AgentAPIClient {
@@ -63,59 +62,5 @@ export class AgentAPIClient {
 
   async getMessages(sessionId: string): Promise<Message[]> {
     return this.fetch<Message[]>(`/api/messages/${sessionId}`);
-  }
-
-  /**
-   * Send a message and receive streamed SSE events.
-   * Returns an async generator of SSEEvent objects.
-   */
-  async *streamMessage(sessionId: string, input: SendMessageInput): AsyncGenerator<SSEEvent> {
-    const res = await fetch(`${this.baseUrl}/api/stream/${sessionId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    });
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({ error: res.statusText }));
-      throw new Error((body as { error?: string }).error || `HTTP ${res.status}`);
-    }
-
-    if (!res.body) {
-      throw new Error("No response body");
-    }
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let currentEvent = "";
-    let currentData = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-
-      for (const line of lines) {
-        if (line.startsWith("event: ")) {
-          currentEvent = line.slice(7).trim();
-        } else if (line.startsWith("data: ")) {
-          currentData = line.slice(6);
-        } else if (line === "" && currentEvent && currentData) {
-          try {
-            const data = JSON.parse(currentData);
-            yield { type: currentEvent, data } as SSEEvent;
-          } catch {
-            // Skip malformed events
-          }
-          currentEvent = "";
-          currentData = "";
-        }
-      }
-    }
   }
 }
