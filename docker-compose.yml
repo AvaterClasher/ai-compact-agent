@@ -1,0 +1,23 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    ports:
+      - "${PORT:-5001}:5001"
+    volumes:
+      - db-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DATABASE_PATH=/data/agent.db
+      - PORT=5001
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AXIOM_API_TOKEN=${AXIOM_API_TOKEN:-}
+      - AXIOM_DATASET=${AXIOM_DATASET:-exo}
+      - AXIOM_OTLP_ENDPOINT=${AXIOM_OTLP_ENDPOINT:-https://api.axiom.co/v1/traces}
+      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-exo}
+    restart: unless-stopped
+
+volumes:
+  db-data:

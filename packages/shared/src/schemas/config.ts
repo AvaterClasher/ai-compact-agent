@@ -6,6 +6,9 @@ export const envSchema = z.object({
   DATABASE_PATH: z.string().default("./data/agent.db"),
   PORT: z.coerce.number().default(5001),
 
+  // Docker mode: run API + SQLite in Docker (default: true)
+  DOCKER_DB: z.coerce.boolean().default(true),
+
   // OpenTelemetry + Axiom (optional - for distributed tracing)
   AXIOM_API_TOKEN: z.string().optional(),
   AXIOM_DATASET: z.string().default("backend-traces"),
