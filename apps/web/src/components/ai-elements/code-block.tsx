@@ -147,7 +147,7 @@ const getHighlighter = (
 
   const highlighterPromise = createHighlighter({
     langs: [language],
-    themes: ["github-light", "github-dark"],
+    themes: ["github-dark"],
   });
 
   highlighterCache.set(language, highlighterPromise);
@@ -204,7 +204,7 @@ export const highlightCode = (
         lang: langToUse,
         themes: {
           dark: "github-dark",
-          light: "github-light",
+          light: "tokyo-night",
         },
       });
 
