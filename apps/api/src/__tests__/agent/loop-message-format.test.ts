@@ -73,7 +73,7 @@ function assertValidToolResultOutput(output: unknown) {
   const obj = output as Record<string, unknown>;
   expect(obj).toHaveProperty("type");
   expect(obj).toHaveProperty("value");
-  expect(VALID_OUTPUT_TYPES).toContain(obj.type);
+  expect(VALID_OUTPUT_TYPES).toContain(obj.type as string);
 }
 
 describe("wrapToolOutput", () => {
