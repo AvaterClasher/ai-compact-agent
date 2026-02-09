@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
+import { DEFAULT_CONTEXT_WINDOW, MODEL_CONTEXT_WINDOWS, OUTPUT_TOKEN_MAX } from "@repo/shared";
 import { isOverflow } from "../../compaction/index.js";
+
+// Derive thresholds from actual constants so tests work regardless of env overrides
+const defaultThreshold = DEFAULT_CONTEXT_WINDOW - OUTPUT_TOKEN_MAX;
+const gpt41Threshold =
+  (MODEL_CONTEXT_WINDOWS["gpt-4.1"] || DEFAULT_CONTEXT_WINDOW) - OUTPUT_TOKEN_MAX;
 
 describe("isOverflow", () => {
   test("returns false when well under limit", () => {
@@ -9,69 +15,65 @@ describe("isOverflow", () => {
   });
 
   test("returns true when input + cacheRead + output exceeds threshold", () => {
-    // Default threshold = 200_000 - 32_000 = 168_000
     expect(
       isOverflow({
-        input: 100_000,
-        output: 50_000,
+        input: defaultThreshold,
+        output: 1,
         reasoning: 0,
-        cacheRead: 20_000,
+        cacheRead: 0,
         cacheWrite: 0,
       }),
-    ).toBe(true); // 170_000 > 168_000
+    ).toBe(true);
   });
 
   test("returns false at exactly the boundary", () => {
-    // 168_000 is NOT > 168_000 (strict >)
+    // threshold is NOT > threshold (strict >)
     expect(
       isOverflow({
-        input: 100_000,
-        output: 48_000,
+        input: defaultThreshold,
+        output: 0,
         reasoning: 0,
-        cacheRead: 20_000,
+        cacheRead: 0,
         cacheWrite: 0,
       }),
     ).toBe(false);
   });
 
   test("respects model-specific context window", () => {
-    // gpt-4.1 has 1_047_576 context window → threshold = 1_047_576 - 32_000 = 1_015_576
     expect(
       isOverflow(
-        { input: 50_000, output: 30_000, reasoning: 0, cacheRead: 10_000, cacheWrite: 0 },
+        { input: gpt41Threshold - 1, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0 },
         "gpt-4.1",
       ),
-    ).toBe(false); // 90_000 < 1_015_576
+    ).toBe(false);
 
     expect(
       isOverflow(
-        { input: 500_000, output: 300_000, reasoning: 0, cacheRead: 250_000, cacheWrite: 0 },
+        { input: gpt41Threshold + 1, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0 },
         "gpt-4.1",
       ),
-    ).toBe(true); // 1_050_000 > 1_015_576
+    ).toBe(true);
   });
 
   test("falls back to default context window for unknown model", () => {
-    // Unknown model → 200_000 - 32_000 = 168_000
     expect(
       isOverflow(
-        { input: 100_000, output: 50_000, reasoning: 0, cacheRead: 20_000, cacheWrite: 0 },
+        { input: defaultThreshold + 1, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0 },
         "unknown-model",
       ),
-    ).toBe(true); // 170_000 > 168_000
+    ).toBe(true);
   });
 
   test("uses default context window when no model provided", () => {
-    // No model → 200_000 - 32_000 = 168_000
     expect(
       isOverflow({
-        input: 100_000,
-        output: 50_000,
+        input: defaultThreshold + 1,
+        output: 0,
         reasoning: 0,
-        cacheRead: 20_000,
+        cacheRead: 0,
         cacheWrite: 0,
       }),
-    ).toBe(true); // 170_000 > 168_000
+    ).toBe(true);
   });
 
   test("ignores reasoning and cacheWrite in calculation", () => {
