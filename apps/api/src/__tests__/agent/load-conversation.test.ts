@@ -130,21 +130,27 @@ describe("loadConversation (via runAgentLoop streamText capture)", () => {
     // Expected: [user, assistant (structured), tool, user "Thanks"]
     // Find the assistant message with structured content
     const structured = capturedMessages.find(
-      (m: any) => m.role === "assistant" && Array.isArray(m.content),
+      (m: unknown) =>
+        (m as { role: string }).role === "assistant" &&
+        Array.isArray((m as { content: unknown }).content),
     ) as { role: string; content: Array<{ type: string; [key: string]: unknown }> } | undefined;
 
     expect(structured).toBeDefined();
     const textPart = structured?.content.find((p) => p.type === "text");
     expect(textPart).toBeDefined();
-    expect((textPart as any).text).toBe("Let me read that.");
+    expect((textPart as unknown as { text: string }).text).toBe("Let me read that.");
 
     const toolCallPart = structured?.content.find((p) => p.type === "tool-call");
     expect(toolCallPart).toBeDefined();
-    expect((toolCallPart as any).toolName).toBe("readFile");
-    expect((toolCallPart as any).input).toEqual({ path: "/src/index.ts" });
+    expect((toolCallPart as unknown as { toolName: string }).toolName).toBe("readFile");
+    expect((toolCallPart as unknown as { input: unknown }).input).toEqual({
+      path: "/src/index.ts",
+    });
 
     // Find the tool message following the assistant
-    const toolMsg = capturedMessages.find((m: any) => m.role === "tool") as
+    const toolMsg = capturedMessages.find(
+      (m: unknown) => (m as { role: string }).role === "tool",
+    ) as
       | {
           role: string;
           content: Array<{ type: string; toolCallId: string; output: unknown }>;
@@ -187,10 +193,12 @@ describe("loadConversation (via runAgentLoop streamText capture)", () => {
 
     await runAgentLoop(session.id, "Continue", noopCallbacks());
 
-    const toolMsg = capturedMessages.find((m: any) => m.role === "tool") as any;
+    const toolMsg = capturedMessages.find(
+      (m: unknown) => (m as { role: string }).role === "tool",
+    ) as { role: string; content: Array<{ output: unknown }> } | undefined;
     expect(toolMsg).toBeDefined();
     // The output should be wrapped as text type (string values get text wrapping)
-    expect(toolMsg.content[0].output).toEqual({
+    expect(toolMsg?.content[0].output).toEqual({
       type: "text",
       value: "[content pruned to save context]",
     });
@@ -207,10 +215,12 @@ describe("loadConversation (via runAgentLoop streamText capture)", () => {
 
     await runAgentLoop(session.id, "What was I working on?", noopCallbacks());
 
-    const systemMsg = capturedMessages.find((m: any) => m.role === "system") as any;
+    const systemMsg = capturedMessages.find(
+      (m: unknown) => (m as { role: string }).role === "system",
+    ) as { role: string; content: string } | undefined;
     expect(systemMsg).toBeDefined();
-    expect(systemMsg.content).toContain("Conversation Summary");
-    expect(systemMsg.content).toContain("Previous work done...");
+    expect(systemMsg?.content).toContain("Conversation Summary");
+    expect(systemMsg?.content).toContain("Previous work done...");
   });
 
   test("messages ordered by createdAt ascending", async () => {
@@ -235,9 +245,10 @@ describe("loadConversation (via runAgentLoop streamText capture)", () => {
     await runAgentLoop(session.id, "Fourth", noopCallbacks());
 
     // capturedMessages should be in order: First, Second, Third, Fourth
-    const contents = capturedMessages.map((m: any) =>
-      typeof m.content === "string" ? m.content : JSON.stringify(m.content),
-    );
+    const contents = capturedMessages.map((m: unknown) => {
+      const msg = m as { content: unknown };
+      return typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content);
+    });
     expect(contents[0]).toBe("First");
     expect(contents[1]).toBe("Second");
     expect(contents[2]).toBe("Third");
@@ -262,9 +273,11 @@ describe("loadConversation (via runAgentLoop streamText capture)", () => {
 
     await runAgentLoop(session.id, "Next", noopCallbacks());
 
-    const assistantInConv = capturedMessages.find((m: any) => m.role === "assistant") as any;
+    const assistantInConv = capturedMessages.find(
+      (m: unknown) => (m as { role: string }).role === "assistant",
+    ) as { role: string; content: string } | undefined;
     expect(assistantInConv).toBeDefined();
-    expect(typeof assistantInConv.content).toBe("string");
-    expect(assistantInConv.content).toBe("Just a plain response");
+    expect(typeof assistantInConv?.content).toBe("string");
+    expect(assistantInConv?.content).toBe("Just a plain response");
   });
 });

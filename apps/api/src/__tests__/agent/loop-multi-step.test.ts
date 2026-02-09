@@ -122,7 +122,7 @@ describe("loop multi-step tool calls with mid-turn compaction", () => {
 
   test("3 steps: tool → tool (overflow) → compaction → text", async () => {
     const session = await insertSession(testDb);
-    const { events, callbacks, getCompactionCount } = trackingCallbacks();
+    const { callbacks, getCompactionCount } = trackingCallbacks();
 
     await runAgentLoop(session.id, "List files then read one", callbacks);
 
@@ -167,9 +167,11 @@ describe("loop multi-step tool calls with mid-turn compaction", () => {
     // Third streamText call (post-compaction) should have system summary
     expect(capturedMessagesPerCall.length).toBe(3);
     const thirdCallMessages = capturedMessagesPerCall[2];
-    const systemMsg = thirdCallMessages.find((m: any) => m.role === "system") as any;
+    const systemMsg = thirdCallMessages.find(
+      (m: unknown) => (m as { role: string }).role === "system",
+    ) as { role: string; content: string } | undefined;
     expect(systemMsg).toBeDefined();
-    expect(systemMsg.content).toContain("Multi-step summary");
+    expect(systemMsg?.content).toContain("Multi-step summary");
   });
 
   test("assistant message ID changes after compaction", async () => {

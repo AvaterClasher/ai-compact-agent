@@ -128,7 +128,7 @@ describe("loop tool execution error handling", () => {
 
   test("error tool result is stored in message_parts", async () => {
     const session = await insertSession(testDb);
-    const { callbacks, getDoneMessageId } = trackingCallbacks();
+    const { callbacks } = trackingCallbacks();
 
     await runAgentLoop(session.id, "Delete the protected directory", callbacks);
 

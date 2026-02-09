@@ -91,8 +91,8 @@ export async function loadConversation(sessionId: string): Promise<ConversationM
           ...textParts.map((p) => ({ type: "text" as const, text: p.content })),
           ...toolCallParts.map((p) => ({
             type: "tool-call" as const,
-            toolCallId: p.toolCallId!,
-            toolName: p.toolName!,
+            toolCallId: p.toolCallId ?? "",
+            toolName: p.toolName ?? "",
             input: JSON.parse(p.content),
           })),
         ];
@@ -104,8 +104,8 @@ export async function loadConversation(sessionId: string): Promise<ConversationM
             role: "tool",
             content: toolResultParts.map((p) => ({
               type: "tool-result" as const,
-              toolCallId: p.toolCallId!,
-              toolName: p.toolName!,
+              toolCallId: p.toolCallId ?? "",
+              toolName: p.toolName ?? "",
               output: wrapToolOutput(JSON.parse(p.content)),
             })),
           });

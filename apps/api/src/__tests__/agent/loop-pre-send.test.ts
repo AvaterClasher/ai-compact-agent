@@ -109,7 +109,7 @@ describe("loop pre-send overflow check", () => {
 
     // New user message with > 100 tokens worth of content → pushes over
     const longContent = "x".repeat(800); // estimateTokens = 200 tokens
-    const { events, callbacks } = trackingCallbacks();
+    const { callbacks } = trackingCallbacks();
     await runAgentLoop(session.id, longContent, callbacks);
 
     expect(compactionFired).toBe(true);
@@ -132,7 +132,7 @@ describe("loop pre-send overflow check", () => {
       createdAt: new Date(Date.now() - 2000),
     });
 
-    const { events, callbacks } = trackingCallbacks();
+    const { callbacks } = trackingCallbacks();
     await runAgentLoop(session.id, "Another small question", callbacks);
 
     expect(compactionFired).toBe(false);
@@ -153,7 +153,7 @@ describe("loop pre-send overflow check", () => {
       createdAt: new Date(Date.now() - 3000),
     });
 
-    const { events, callbacks } = trackingCallbacks();
+    const { callbacks } = trackingCallbacks();
     await runAgentLoop(session.id, "More content", callbacks);
 
     expect(compactionFired).toBe(true);
@@ -169,7 +169,7 @@ describe("loop pre-send overflow check", () => {
       createdAt: new Date(Date.now() - 3000),
     });
 
-    const { events, callbacks } = trackingCallbacks();
+    const { callbacks } = trackingCallbacks();
     await runAgentLoop(session.id, "Another small message", callbacks);
 
     expect(compactionFired).toBe(false);
@@ -192,13 +192,15 @@ describe("loop pre-send overflow check", () => {
       createdAt: new Date(Date.now() - 4000),
     });
 
-    const { events, callbacks } = trackingCallbacks();
+    const { callbacks } = trackingCallbacks();
     await runAgentLoop(session.id, "Follow up", callbacks);
 
     // After compaction, capturedMessages should contain the system summary
-    const systemMsg = capturedMessages.find((m: any) => m.role === "system") as any;
+    const systemMsg = capturedMessages.find(
+      (m: unknown) => (m as { role: string }).role === "system",
+    ) as { role: string; content: string } | undefined;
     expect(systemMsg).toBeDefined();
-    expect(systemMsg.content).toContain("Compacted summary for overflow test");
+    expect(systemMsg?.content).toContain("Compacted summary for overflow test");
   });
 
   test("onCompaction fires before onToken", async () => {
