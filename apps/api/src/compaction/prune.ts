@@ -42,25 +42,35 @@ export async function prune(db: DB, sessionId: string): Promise<number> {
         protectedMessageIds.add(msg.id);
       }
 
-      // Get all unpruned tool-result parts not in protected messages
+      // Get all unpruned parts for this session via JOIN
+      const sessionMessageIds = new Set(sessionMessages.map((m) => m.id));
       const allParts = await db
-        .select()
+        .select({
+          id: messageParts.id,
+          messageId: messageParts.messageId,
+          type: messageParts.type,
+          content: messageParts.content,
+          tokenEstimate: messageParts.tokenEstimate,
+          pruned: messageParts.pruned,
+          createdAt: messageParts.createdAt,
+          toolName: messageParts.toolName,
+          toolCallId: messageParts.toolCallId,
+        })
         .from(messageParts)
-        .where(and(eq(messageParts.pruned, false)))
+        .innerJoin(messages, eq(messageParts.messageId, messages.id))
+        .where(and(eq(messages.sessionId, sessionId), eq(messageParts.pruned, false)))
         .orderBy(desc(messageParts.createdAt));
 
-      // Filter to parts belonging to this session's messages and not protected
-      const sessionMessageIds = new Set(sessionMessages.map((m) => m.id));
+      // Filter to candidate parts not in protected messages
       const candidateParts = allParts.filter(
         (p) =>
-          sessionMessageIds.has(p.messageId) &&
           !protectedMessageIds.has(p.messageId) &&
           (p.type === "tool-result" || p.type === "tool-call"),
       );
 
       // Calculate total tokens and determine what to prune
       let totalTokens = 0;
-      for (const part of allParts.filter((p) => sessionMessageIds.has(p.messageId))) {
+      for (const part of allParts) {
         totalTokens += part.tokenEstimate || estimateTokens(part.content);
       }
 
