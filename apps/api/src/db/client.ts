@@ -9,6 +9,18 @@ import * as schema from "@repo/shared/db";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 
 const dbPath = process.env.DATABASE_PATH || "./data/agent.db";
+const dockerDb = process.env.DOCKER_DB !== "false";
+
+if (dockerDb) {
+  // Ensure the Docker volume service is running before writing to the DB
+  const check = Bun.spawnSync(["docker", "compose", "ps", "-q", "db"]);
+  if (!check.stdout.toString().trim()) {
+    const start = Bun.spawnSync(["docker", "compose", "up", "-d", "db"]);
+    if (start.exitCode !== 0) {
+      console.error("Failed to start Docker DB volume service:", start.stderr.toString());
+    }
+  }
+}
 
 // Ensure the data directory exists
 const dir = dbPath.substring(0, dbPath.lastIndexOf("/"));
