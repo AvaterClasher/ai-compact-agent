@@ -1,0 +1,15 @@
+# Persistent SQLite database storage via Docker volume
+# Usage:
+#   docker compose up -d    # Start the volume service
+#   bun run dev:api          # Run the API on the host
+#
+# The API writes to ./data/agent.db on the host.
+# Docker manages the directory and provides volume lifecycle (backup, prune).
+
+services:
+  db:
+    image: busybox:1.37
+    volumes:
+      - ./data:/data
+    command: ["tail", "-f", "/dev/null"]
+    restart: unless-stopped

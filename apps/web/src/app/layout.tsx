@@ -1,0 +1,25 @@
+import { GeistMono } from "geist/font/mono";
+import { GeistSans } from "geist/font/sans";
+import type { Metadata } from "next";
+import { SidebarShell } from "@/components/SidebarShell";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "Exo",
+  description: "Context-compacting coding agent",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en" className={`dark ${GeistSans.variable} ${GeistMono.variable}`}>
+      <head>
+        <meta name="theme-color" content="#0a0a0a" />
+      </head>
+      <body className="min-h-screen antialiased">
+        <div className="flex h-screen overflow-hidden">
+          <SidebarShell>{children}</SidebarShell>
+        </div>
+      </body>
+    </html>
+  );
+}
