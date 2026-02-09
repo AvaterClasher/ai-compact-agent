@@ -30,7 +30,7 @@ const migrations = [
   sql`CREATE TABLE IF NOT EXISTS message_parts (
     id TEXT PRIMARY KEY,
     message_id TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
-    type TEXT NOT NULL CHECK(type IN ('text', 'tool-call', 'tool-result', 'compaction')),
+    type TEXT NOT NULL CHECK(type IN ('text', 'tool-call', 'tool-result', 'reasoning', 'compaction')),
     tool_name TEXT,
     tool_call_id TEXT,
     content TEXT NOT NULL,
